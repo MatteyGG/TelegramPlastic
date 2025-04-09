@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "npx ts-node ."
+  },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^22.13.11",
@@ -13,6 +16,10 @@
     "exceljs": "^4.4.0",
     "grammy": "^1.35.0",
     "prisma": "^6.5.0",
-    "openai": "^4.93.0"
+    "openai": "^4.93.0",
+    "@azure-rest/ai-inference": "latest",
+    "@azure/core-auth": "latest",
+    "@azure/core-sse": "latest"
   }
 }
+

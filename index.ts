@@ -1,18 +1,16 @@
-import  ModelClient,{ isUnexpected } from "@azure-rest/ai-inference";
-import { AzureKeyCredential } from "@azure/core-auth";
+import OpenAI from "openai";
 import { Bot } from "grammy";
 import dotenv from "dotenv";
 import { is3DPrintingRelated } from "./modules/wordtest";
 
 dotenv.config();
-
+const memory: Record<string, string> = {};
 const token = process.env["GITHUB_TOKEN"];
-const endpoint = "https://models.inference.ai.azure.com";
-const modelName = "DeepSeek-V3-0324";
+const endpoint = "https://models.github.ai/inference";
+const modelName = "openai/gpt-4.1";
 
 // Инициализация OpenAI клиента
-const client = ModelClient(endpoint, new AzureKeyCredential(token as string));
-
+const client = new OpenAI({ baseURL: endpoint, apiKey: token });
 // Инициализация бота
 const botToken = process.env["BOT_TOKEN"];
 if (typeof botToken !== "string") {
@@ -29,7 +27,6 @@ const SYSTEM_PROMPT = `Вы эксперт по материалам для 3D-�
 Рекомендуйте материалы (PLA, ABS, PETG, TPU, нейлон, поликарбонат) с обоснованием.
 Ответ должен быть сжатым, но информативным, в стиле сообщения в Telegram от администратора (НЕ ИСПОЛЬЗУЙТЕ СПЕЦИАЛЬНЫЕ СИМВОЛЫ в ответе, например # ** * и т.д. Важно дополнить emoji). Если вопрос не связан с 3D-печатью, вежливо укажите на это.
 `;
-
 // Обработчик на приветствие
 bot.command("start", (ctx) =>
   ctx.reply(
@@ -40,42 +37,34 @@ bot.command("start", (ctx) =>
 // Обработчик сообщений
 bot.on("message", async (ctx) => {
   try {
-    console.log("Получено сообщение:", ctx.message.text);
     const userMessage = ctx.message.text ?? "";
+    const chatId = ctx.chat.id;
 
-    // Проверка на релевантность темы
-    if (!is3DPrintingRelated(userMessage)) {
-      console.log("Сообщение не связано с 3D печатью.");
-      await ctx.reply("Ваш вопрос не связан с 3D печатью. Я не могу помочь.");
+    // Проверка на релевантность темы только для первого запроса
+    if (!memory[chatId] && !is3DPrintingRelated(userMessage)) {
+      await ctx.reply("Если у вас есть вопросы по 3D-печати, я готов помочь.");
       return;
     }
-
-    console.log("Сообщение связано с 3D печатью, отправка моментального ответа...");
     // Отправка моментального ответа
     const instantReply = await ctx.reply(
       "Пожалуйста, подождите, я обрабатываю ваш запрос..."
     );
-
-    console.log("Формирование запроса к AI...");
     // Формирование запроса к AI
-    const response = await client.path("/chat/completions").post({
-      body: {
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMessage },
-        ],
-        temperature: 1.0,
-        top_p: 1.0,
-        max_tokens: 1000,
-        model: modelName,
-      },
+    const request = memory[chatId] ?? "";
+    memory[chatId] = request + "\n\n" + userMessage;
+
+    const response = await client.chat.completions.create({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: memory[chatId] },
+      ],
+      temperature: 0.4,
+      top_p: 1.0,
+      max_tokens: 1000,
+      model: modelName,
     });
 
-    if (isUnexpected(response)) {
-      throw response.body.error;
-    }
-
-    let answer = response.body.choices[0].message.content ?? "";
+    let answer = response.choices[0].message.content ?? "";
     answer = answer.replace(/[*]/g, "");
     console.log("Ответ от AI получен:", answer);
 
@@ -90,12 +79,7 @@ bot.on("message", async (ctx) => {
   }
 });
 
-// Фильтр тематики
-
 
 // Запуск бота
 bot.start();
 console.log("Бот запущен и готов к работе!");
-
-
-

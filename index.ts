@@ -24,13 +24,24 @@ type Material = {
 
 const MATERIALS: Record<string, Material> = {
   ABS: {
-    links: ["https://example.com/abs", "https://bestfilament.ru/abs"],
+    links: [
+      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=6",
+    ],
   },
   PETG: {
-    links: ["https://example.com/petg"],
+    links: [
+      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=42",
+    ],
   },
   PLA: {
-    links: ["https://example.com/pla"],
+    links: [
+      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=38",
+    ],
+  },
+  TPU: {
+    links: [
+      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=43",
+    ],
   },
 };
 

@@ -3,6 +3,11 @@ import { Bot } from "grammy";
 import dotenv from "dotenv";
 import { is3DPrintingRelated } from "./modules/wordtest";
 
+import { findFAQAnswer } from "./modules/faq";
+import { getCacheResponse, setCacheResponse } from "./modules/cache";
+import { initSearch, searchFAQ } from "./modules/search";
+import { logRequest } from "./modules/metrics";
+
 dotenv.config();
 const memory: Record<string, ChatContext> = {}; // Обновленная структура памяти
 const token = process.env["GITHUB_TOKEN"];
@@ -18,11 +23,8 @@ type ChatContext = {
 };
 
 // Словарь материалов
-type Material = {
-  links: string[];
-};
 
-const MATERIALS: Record<string, Material> = {
+export const MATERIALS: Record<string, Material> = {
   ABS: {
     links: [
       "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=6",
@@ -44,6 +46,8 @@ const MATERIALS: Record<string, Material> = {
     ],
   },
 };
+
+initSearch();
 
 const client = new OpenAI({ baseURL: endpoint, apiKey: token });
 const bot = new Bot(process.env["BOT_TOKEN"]!);
@@ -68,6 +72,25 @@ bot.on("message", async (ctx) => {
   try {
     const userMessage = ctx.message.text?.trim() || "";
     const chatId = ctx.chat.id.toString();
+
+    // Логирование запроса
+    logRequest(userMessage, "ai");
+
+    // 1. Проверка кэша
+    const cachedAnswer = getCacheResponse(userMessage);
+    if (cachedAnswer) {
+      await ctx.reply(cachedAnswer);
+      logRequest(userMessage, "cache");
+      return;
+    }
+
+    // 2. Поиск в FAQ
+    const faqAnswer = findFAQAnswer(userMessage) || searchFAQ(userMessage);
+    if (faqAnswer) {
+      await ctx.reply(faqAnswer);
+      logRequest(userMessage, "faq");
+      return;
+    }
 
     // Инициализация контекста
     if (!memory[chatId]) {
@@ -112,6 +135,11 @@ bot.on("message", async (ctx) => {
 
     let answer =
       response.choices[0].message.content?.replace(/[*#]/g, "") || "";
+
+    // Кэширование ответа
+    if (!answer.includes("не связан")) {
+      setCacheResponse(userMessage, answer);
+    }
 
     // Добавляем ответ в историю и обрезаем
     memory[chatId].history.push({ role: "assistant", content: answer });

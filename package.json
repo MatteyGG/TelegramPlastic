@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "npx ts-node ."
+    "start": "npx ts-node bot.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

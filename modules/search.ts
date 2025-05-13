@@ -43,7 +43,7 @@ export async function searchFAQ(query: string): Promise<string | null> {
   const results = searchIndex.query(q => {
     q.term(query.toLowerCase(), {
       fields: ["keywords"],
-      editDistance: 2,
+      editDistance: 3,
       wildcard: lunr.Query.wildcard.TRAILING
     });
   });

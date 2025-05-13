@@ -14,8 +14,8 @@ const CONFIG_DIR = path.join(__dirname, '../config');
 
 // Универсальный загрузчик конфигов
 async function loadConfigFile<T>(fileName: string): Promise<T> {
-  console.log(`Loading config: ${fileName}`);
   const filePath = path.join(CONFIG_DIR, `${fileName}.json`);
+  // console.log(`Loading config from: ${filePath}`);
   const content = await fs.readFile(filePath, 'utf8');
   return JSON.parse(content);
 }

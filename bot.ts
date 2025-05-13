@@ -7,6 +7,11 @@ import { hydrateFiles } from "@grammyjs/files";
 import { limit } from "@grammyjs/ratelimiter";
 import { getResponse, loadConfig } from "./modules/getConfig";
 import { initSearch } from "./modules/search";
+import { printBanner } from "./modules/printBanner";
+import { mainLogger } from "./modules/logger";
+
+
+
 
 // Инициализация окружения
 dotenv.config();
@@ -36,10 +41,11 @@ async function setupBot() {
 // Запуск бота
 async function bootstrap() {
   try {
+    await printBanner();
     await registerPlugins();
-    setupBot();
+    await setupBot();
     bot.start({
-      onStart: (info) => console.log(`🤖Бот запущен как ${info.username}`),
+      onStart: (info) => mainLogger.info(`🤖Бот запущен как ${info.username}`),
       drop_pending_updates: true,
     });
 

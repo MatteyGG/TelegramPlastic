@@ -5,6 +5,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/figlet": "^1.7.0",
     "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
@@ -29,11 +30,16 @@
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
     "exceljs": "^4.4.0",
+    "figlet": "^1.8.1",
     "grammy": "^1.35.0",
     "lru-cache": "^11.1.0",
     "lunr": "^2.3.9",
     "natural": "^8.0.1",
     "openai": "^4.93.0",
-    "prisma": "^6.5.0"
+    "pino": "^9.6.0",
+    "pino-colada": "^2.2.2",
+    "pino-pretty": "^13.0.0",
+    "prisma": "^6.5.0",
+    "systeminformation": "^5.25.11"
   }
 }

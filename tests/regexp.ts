@@ -42,5 +42,5 @@ const texts = [
 ];
 
 for (const text of texts) {
-  console.log(text, is3DPrintingRelated(text), 'Ожидалось true');
+  mainLogger.info(text, is3DPrintingRelated(text), 'Ожидалось true');
 }

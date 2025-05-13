@@ -5,10 +5,10 @@ import { is3DPrintingRelated } from "../modules/wordtest";
 import { findFAQAnswer } from "../modules/faq";
 import { getCacheResponse, setCacheResponse } from "../modules/cache";
 import { searchFAQ } from "../modules/search";
-import { logRequest } from "../modules/metrics";
 import { bot } from "../lib/context";
 import { getSystemPrompt } from "../modules/getConfig";
 import { findMaterialsInText, formatMaterialLinks } from "../modules/materialSearch";
+import { mainLogger, requestLogger } from "../modules/logger";
 
 dotenv.config();
 const memory: Record<string, ChatContext> = {}; // Обновленная структура памяти
@@ -40,20 +40,20 @@ const client = new OpenAI({ apiKey: token, baseURL: endpoint });
 
 export function register_message() {
 
-  console.log("Registering message handler...");
+  mainLogger.info("Registering message handler...");
   bot.on("message:text", async (ctx) => {
     if (ctx.message?.text?.startsWith("/")) {
-      console.log("Command received:", ctx.message.text);
+      mainLogger.info("Command received:", ctx.message.text);
       return; // Пропускаем команды
     }
+    const user = ctx.from?.username || "unknown_user";
+    const text = ctx.message.text || "[non-text message]";
+    requestLogger.info(`User ${user}: ${text}`);
 
     try {
       const SYSTEM_PROMPT = getSystemPrompt();
       const userMessage = ctx.message.text?.trim() || "";
       const chatId = ctx.chat.id.toString();
-
-      // Логирование запроса
-      logRequest(userMessage, "ai");
 
       // 1. Проверка кэша
       const cachedAnswer = getCacheResponse('general', userMessage);
@@ -66,7 +66,6 @@ export function register_message() {
       const faqAnswer = findFAQAnswer(userMessage) ?? await searchFAQ(userMessage);
       if (faqAnswer) {
         await ctx.reply(faqAnswer);
-        logRequest(userMessage, "faq");
         return;
       }
 
@@ -132,7 +131,7 @@ export function register_message() {
       }
 
       // Добавляем ссылки на материалы
-      console.log('Processing message:', userMessage);
+      mainLogger.info(`Processing message from @${ctx.from.username}:` + userMessage);
       const materialMatches = findMaterialsInText(answer);
       if (materialMatches.length > 0) {
         answer += formatMaterialLinks(materialMatches);

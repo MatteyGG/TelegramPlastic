@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { mainLogger } from './logger';
 
 export interface Config {
   faq: Array<{ keywords: string[]; answer: string }>;
@@ -15,7 +16,7 @@ const CONFIG_DIR = path.join(__dirname, '../config');
 // Универсальный загрузчик конфигов
 async function loadConfigFile<T>(fileName: string): Promise<T> {
   const filePath = path.join(CONFIG_DIR, `${fileName}.json`);
-  // console.log(`Loading config from: ${filePath}`);
+  // mainLogger.info(`Loading config from: ${filePath}`);
   const content = await fs.readFile(filePath, 'utf8');
   return JSON.parse(content);
 }
@@ -40,9 +41,9 @@ export async function loadConfig(force = false): Promise<void> {
     };
 
     isConfigLoaded = true;
-    console.log('✅ Конфигурация успешно загружена');
+    mainLogger.info('✅ Конфигурация успешно загружена');
   } catch (error) {
-    console.error('🚨 Ошибка загрузки конфигурации:', error);
+    mainLogger.error('🚨 Ошибка загрузки конфигурации:', error);
     throw new Error('Failed to load configs');
   }
 }

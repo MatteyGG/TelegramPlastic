@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { InputFile } from "grammy";
 import { loadConfig } from "../modules/getConfig";
+import { mainLogger } from "../modules/logger";
 
 const CONFIG_PATH = "./config";
 
@@ -12,7 +13,7 @@ async function verifyAdmin(ctx: Context): Promise<boolean> {
 }
 
 export function register_admin() {
-  console.log("Registering admin commands");
+  mainLogger.info("Registering admin commands");
 
   // Команда для редактирования конфигов
   bot.command("editconfig", async (ctx) => {

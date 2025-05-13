@@ -5,32 +5,48 @@ type CacheEntry = {
   timestamp: number;
 };
 
-const options = {
-  // 508 байт * 100 ≈ 50.8 КБ
-  max: 100,
-  ttl: 3600 * 1000, // 1 час
-  updateAgeOnGet: true,
+const CACHE_CONFIG = {
+  FAQ: {
+    max: 50, // 50 последних FAQ-ответов
+    ttl: 3600 * 1000 * 2, // 2 часа
+  },
+  SEARCH: {
+    max: 100, // 100 поисковых запросов
+    ttl: 3600 * 1000, // 1 час
+  },
+  GENERAL: {
+    max: 30, // 30 общих ответов
+    ttl: 3600 * 1000 * 24, // 24 часа
+  }
 };
 
-export const cache = new LRUCache<string, CacheEntry>(options);
+// Создаем отдельные кэши
+export const caches = {
+  faq: new LRUCache<string, CacheEntry>(CACHE_CONFIG.FAQ),
+  search: new LRUCache<string, CacheEntry>(CACHE_CONFIG.SEARCH),
+  general: new LRUCache<string, CacheEntry>(CACHE_CONFIG.GENERAL),
+};
 
-export function getCacheResponse(question: string): string | null {
-  const entry = cache.get(question.toLowerCase());
-  return entry?.answer || null;
+export function getCacheResponse(module: keyof typeof caches, question: string): string | null {
+  return caches[module].get(question.toLowerCase())?.answer || null;
 }
 
-export function getAllCache(): Map<string, CacheEntry> {
-  const cacheMap = new Map<string, CacheEntry>();
-  cache.forEach((value, key) => {
-    cacheMap.set(key, value);
-  });
-  return cacheMap;
-}
-
-export function setCacheResponse(question: string, answer: string): void {
-  cache.set(question.toLowerCase(), {
+export function setCacheResponse(
+  module: keyof typeof caches,
+  question: string,
+  answer: string
+): void {
+  caches[module].set(question.toLowerCase(), {
     answer,
     timestamp: Date.now(),
   });
 }
 
+// Для админ-панели (опционально)
+export function getCacheStats() {
+  return {
+    faq: caches.faq.size,
+    search: caches.search.size,
+    general: caches.general.size,
+  };
+}

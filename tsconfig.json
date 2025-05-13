@@ -5,8 +5,6 @@
     "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
-    "typeRoots": [
-      "types.d.ts"
-    ]
+    "types": ["@types/jest", /* ... other types ... */]
   }
 }

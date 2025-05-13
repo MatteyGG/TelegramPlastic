@@ -3,6 +3,7 @@ import { bot } from "../lib/context";
 import fs from "fs/promises";
 import path from "path";
 import { InputFile } from "grammy";
+import { loadConfig } from "../modules/getConfig";
 
 const CONFIG_PATH = "./config";
 
@@ -17,7 +18,7 @@ export function register_admin() {
   bot.command("editconfig", async (ctx) => {
     if (!(await verifyAdmin(ctx))) {
       return ctx.reply("🚫 Доступ запрещен");
-    }
+    } 
 
     const [_, type, key, ...valueParts] = ctx.msg.text.split(" ");
     const value = valueParts.join(" ");
@@ -107,4 +108,17 @@ export function register_admin() {
       await ctx.reply("❌ Ошибка загрузки файла");
     }
   });
+
+  bot.command("reload", async (ctx) => {
+    if (!(await verifyAdmin(ctx))) return;
+  
+    try {
+      await loadConfig(true); // Принудительная перезагрузка
+      await ctx.reply("✅ Конфигурация полностью обновлена!");
+    } catch (error: any) {
+      await ctx.reply(`❌ Ошибка перезагрузки: ${error.message}`);
+      console.error('Reload Error:', error);
+    }
+  });
+  
 }

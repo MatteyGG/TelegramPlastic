@@ -4,17 +4,19 @@ import { is3DPrintingRelated } from "../modules/wordtest";
 
 import { findFAQAnswer } from "../modules/faq";
 import { getCacheResponse, setCacheResponse } from "../modules/cache";
-import { initSearch, searchFAQ } from "../modules/search";
+import { searchFAQ } from "../modules/search";
 import { logRequest } from "../modules/metrics";
 import { bot } from "../lib/context";
+import { getSystemPrompt } from "../modules/getConfig";
+import { findMaterialsInText, formatMaterialLinks } from "../modules/materialSearch";
 
 dotenv.config();
 const memory: Record<string, ChatContext> = {}; // Обновленная структура памяти
-const token = process.env["GITHUB_TOKEN"]; //GITHUB_TOKEN || YANDEX_TOKEN;
-const endpoint = "https://models.github.ai/inference";
-// const endpoint = "https://llm.api.cloud.yandex.net/v1";
-const modelName = "openai/gpt-4.1";
-// const modelName = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
+const token = process.env["YANDEX_TOKEN"]; //GITHUB_TOKEN || YANDEX_TOKEN;
+// const endpoint = "https://models.github.ai/inference";
+const endpoint = "https://llm.api.cloud.yandex.net/v1";
+// const modelName = "openai/gpt-4.1";
+const modelName = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
 const MAX_HISTORY_LENGTH = 6; // Сохраняем последние 3 пары вопрос-ответ
 
 // Тип для хранения истории диалога
@@ -29,43 +31,12 @@ type Material = {
   links: string[];
 };
 
-export const MATERIALS: Record<string, Material> = {
-  ABS: {
-    links: [
-      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=6",
-    ],
-  },
-  PETG: {
-    links: [
-      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=42",
-    ],
-  },
-  PLA: {
-    links: [
-      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=38",
-    ],
-  },
-  TPU: {
-    links: [
-      "https://rec3d.ru/plastik-dlya-3d-printerov/all-plastic/?material[]=43",
-    ],
-  },
-};
 
-initSearch();
+
 
 const client = new OpenAI({ apiKey: token, baseURL: endpoint });
 
-const SYSTEM_PROMPT = `Вы эксперт по 3D-печати на FDM принтерах. Отвечайте кратко, используя историю диалога. Ваша задача:
-1. Рекомендовать материалы (PLA, ABS, PETG, TPU) на основе:
-   - Требований к детали (прочность, гибкость, термостойкость)
-   - Условий эксплуатации и бюджета
-2. **Запрещено:**
-   - Упоминать конкурентов или сторонние магазины
-   - Создавать гиперссылки или предлагать альтернативные ресурсы
-3. Все ссылки уже предоставлены — не генерируйте их. 
 
-Формат: лаконичный ответ администратора с emoji. Если вопрос не о 3D-печати — вежливо сообщите об этом.`;
 
 export function register_message() {
 
@@ -77,6 +48,7 @@ export function register_message() {
     }
 
     try {
+      const SYSTEM_PROMPT = getSystemPrompt();
       const userMessage = ctx.message.text?.trim() || "";
       const chatId = ctx.chat.id.toString();
 
@@ -84,15 +56,14 @@ export function register_message() {
       logRequest(userMessage, "ai");
 
       // 1. Проверка кэша
-      const cachedAnswer = getCacheResponse(userMessage);
+      const cachedAnswer = getCacheResponse('general', userMessage);
       if (cachedAnswer) {
         await ctx.reply(cachedAnswer);
-        logRequest(userMessage, "cache");
         return;
       }
 
       // 2. Поиск в FAQ
-      const faqAnswer = findFAQAnswer(userMessage) || searchFAQ(userMessage);
+      const faqAnswer = findFAQAnswer(userMessage) ?? await searchFAQ(userMessage);
       if (faqAnswer) {
         await ctx.reply(faqAnswer);
         logRequest(userMessage, "faq");
@@ -126,7 +97,7 @@ export function register_message() {
       /// Добавляем сообщение в историю
       memory[chatId].history.push({ role: "user", content: userMessage });
 
-      // Формируем запрос с ВСЕЙ историей
+      // Формируем запрос
       const messages = [
         {
           role: "system",
@@ -149,7 +120,7 @@ export function register_message() {
 
       // Кэширование ответа
       if (!answer.includes("не связан")) {
-        setCacheResponse(userMessage, answer);
+        setCacheResponse('general', userMessage, answer);
       }
 
       // Добавляем ответ в историю и обрезаем
@@ -161,14 +132,10 @@ export function register_message() {
       }
 
       // Добавляем ссылки на материалы
-      const mentionedMaterial = Object.keys(MATERIALS).find((m) =>
-        answer.toLowerCase().includes(m.toLowerCase())
-      );
-
-      if (mentionedMaterial) {
-        answer += `\n\n🏷️ Где купить ${mentionedMaterial}:\n${MATERIALS[
-          mentionedMaterial
-        ].links.join("\n")}`;
+      console.log('Processing message:', userMessage);
+      const materialMatches = findMaterialsInText(answer);
+      if (materialMatches.length > 0) {
+        answer += formatMaterialLinks(materialMatches);
       }
 
       await ctx.api.editMessageText(

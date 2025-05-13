@@ -1,19 +1,25 @@
 {
   "scripts": {
-    "start": "npx ts-node bot.ts"
+    "start": "npx ts-node bot.ts",
+    "test": "jest"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/jest": "^29.5.14",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.15.2",
     "@types/snowball-stemmers": "^0.6.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "@azure-rest/ai-inference": "latest",
     "@azure/core-auth": "latest",
     "@azure/core-sse": "latest",
     "@grammyjs/files": "^1.1.1",
+    "@grammyjs/ratelimiter": "^1.2.1",
     "@prisma/client": "^6.5.0",
     "@types/lru-cache": "^7.10.9",
     "@types/lunr": "^2.3.7",

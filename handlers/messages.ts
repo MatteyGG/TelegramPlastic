@@ -10,10 +10,11 @@ import { bot } from "../lib/context";
 
 dotenv.config();
 const memory: Record<string, ChatContext> = {}; // Обновленная структура памяти
-const token = process.env["GITHUB_TOKEN"];
+const token = process.env["GITHUB_TOKEN"]; //GITHUB_TOKEN || YANDEX_TOKEN;
 const endpoint = "https://models.github.ai/inference";
+// const endpoint = "https://llm.api.cloud.yandex.net/v1";
 const modelName = "openai/gpt-4.1";
-
+// const modelName = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
 const MAX_HISTORY_LENGTH = 6; // Сохраняем последние 3 пары вопрос-ответ
 
 // Тип для хранения истории диалога
@@ -53,11 +54,10 @@ export const MATERIALS: Record<string, Material> = {
 
 initSearch();
 
-const client = new OpenAI({ baseURL: endpoint, apiKey: token });
+const client = new OpenAI({ apiKey: token, baseURL: endpoint });
 
-const SYSTEM_PROMPT = `Вы эксперт по 3D-печати. Отвечайте кратко, используя историю диалога. Ваша задача:
+const SYSTEM_PROMPT = `Вы эксперт по 3D-печати на FDM принтерах. Отвечайте кратко, используя историю диалога. Ваша задача:
 1. Рекомендовать материалы (PLA, ABS, PETG, TPU) на основе:
-   - Типа принтера (FDM/SLA/SLS)
    - Требований к детали (прочность, гибкость, термостойкость)
    - Условий эксплуатации и бюджета
 2. **Запрещено:**
@@ -70,13 +70,12 @@ const SYSTEM_PROMPT = `Вы эксперт по 3D-печати. Отвечай�
 export function register_message() {
 
   console.log("Registering message handler...");
-  bot.on("message", async (ctx) => {
-    
+  bot.on("message:text", async (ctx) => {
     if (ctx.message?.text?.startsWith("/")) {
       console.log("Command received:", ctx.message.text);
       return; // Пропускаем команды
     }
-    
+
     try {
       const userMessage = ctx.message.text?.trim() || "";
       const chatId = ctx.chat.id.toString();
@@ -113,10 +112,14 @@ export function register_message() {
         const isRelevant = is3DPrintingRelated(userMessage);
         if (!isRelevant) {
           await ctx.reply("Задайте вопрос по 3D-печати, и я помогу! 🖨️");
+          await ctx.react("👎");
           return;
         }
         memory[chatId].isRelevant = true; // Диалог помечен как релевантный
+        await ctx.react("👍");
       }
+
+
 
       const instantReply = await ctx.reply("🔍 Анализирую...");
 
@@ -136,7 +139,7 @@ export function register_message() {
       ];
 
       const response = await client.chat.completions.create({
-        messages: messages as any, // Временное решение для совместимости типов
+        messages: messages as any, // Временное решение
         temperature: 0.4,
         model: modelName,
       });

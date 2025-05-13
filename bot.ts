@@ -3,7 +3,7 @@ import { bot } from "./lib/context";
 import { register_admin } from "./handlers/admin";
 import { register_commands } from "./handlers/commands";
 import { register_message } from "./handlers/messages";
-
+import { hydrateFiles } from "@grammyjs/files";
 
 // Инициализация окружения
 dotenv.config();
@@ -19,6 +19,7 @@ async function setupBot() {
 // Запуск бота
 async function bootstrap() {
   try {
+    bot.api.config.use(hydrateFiles(bot.token));
     setupBot();
     bot.start({
       onStart: (info) => console.log(`🤖Бот запущен как ${info.username}`),

@@ -13,6 +13,7 @@
     "@azure-rest/ai-inference": "latest",
     "@azure/core-auth": "latest",
     "@azure/core-sse": "latest",
+    "@grammyjs/files": "^1.1.1",
     "@prisma/client": "^6.5.0",
     "@types/lru-cache": "^7.10.9",
     "@types/lunr": "^2.3.7",

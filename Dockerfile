@@ -29,9 +29,9 @@ COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/config ./config
 
-# Создаем папку для логов и назначаем права
+# Создаем папку для логов и конфигов; назначаем права
 RUN mkdir -p /app/logs && chown -R node:node /app/logs
-
+RUN mkdir -p /app/config && chown -R node:node /app/config
 # Только logs монтируем как volume
 VOLUME ["/app/logs"]
 
@@ -43,4 +43,4 @@ CMD ["node","--max-old-space-size=4096", "dist/bot.js"]
 #docker buildx build  --platform linux/arm64,linux/amd64  -t ghcr.io/matteygg/telegram-plastic:latest  --load .
 
 # docker run -v "$(PWD)/logs:/app/logs" --env-file .env --memory=4g ghcr.io/matteygg/telegram-plastic:latest
-# docker run -v "/root/telegram-bot/logs:/app/logs:Z" --env-file .env --memory=4g ghcr.io/matteygg/telegram-plastic:latest
+# docker run -v "/root/telegram-bot/logs:/app/logs" -v "/root/telegram-bot/config:/app/config"  --env-file .env --memory=4g ghcr.io/matteygg/telegram-plastic:latest

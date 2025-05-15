@@ -7,7 +7,8 @@ import { loadConfig } from "../modules/getConfig";
 import { mainLogger } from "../modules/logger";
 import { getCacheStats } from "../modules/cache";
 
-const CONFIG_PATH = "./config";
+export const CONFIG_PATH = path.join(__dirname, '../../config/');
+
 
 async function verifyAdmin(ctx: Context): Promise<boolean> {
   return ctx.from?.id.toString() === process.env.ADMIN_ID;

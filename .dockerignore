@@ -1,0 +1,8 @@
+tests
+jest.config.ts
+node_modules
+.vscode
+logs/*
+Dockerfile
+.dockerignore
+dist

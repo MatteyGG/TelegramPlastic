@@ -1,8 +1,12 @@
 // logger.ts
+import path from "path";
 import pino from "pino";
 import pretty from "pino-pretty";
 
 const logLevel = process.env.LOG_LEVEL || "info";
+
+export const LOGGER_DIR = path.join(__dirname, '../../logs');
+
 
 // Форматтер для консоли без форматирования даты
 // Формат времени в читаемом виде
@@ -31,7 +35,7 @@ const mainLogger = pino(
     },
     { 
       level: "info",
-      stream: pino.destination("logs/bot.log" ) // Запись в файл
+      stream: pino.destination(LOGGER_DIR + "/bot.log" ) // Запись в файл
     },
   ])
 );
@@ -43,7 +47,8 @@ const requestLogger = pino({
   formatters: {
     level: (label) => ({ level: label }), // Уровень лога (info/warn/error)
   },
-}, pino.destination("logs/requests.log")); // Запись в файл
+}, pino.destination(LOGGER_DIR + "/requests.log")); // Запись в файл
+
 
 export { mainLogger, requestLogger };
 

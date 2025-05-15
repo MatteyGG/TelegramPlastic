@@ -5,6 +5,7 @@ import path from "path";
 import { InputFile } from "grammy";
 import { loadConfig } from "../modules/getConfig";
 import { mainLogger } from "../modules/logger";
+import { getCacheStats } from "../modules/cache";
 
 const CONFIG_PATH = "./config";
 
@@ -19,7 +20,7 @@ export function register_admin() {
   bot.command("editconfig", async (ctx) => {
     if (!(await verifyAdmin(ctx))) {
       return ctx.reply("🚫 Доступ запрещен");
-    } 
+    }
 
     const [_, type, key, ...valueParts] = ctx.msg.text.split(" ");
     const value = valueParts.join(" ");
@@ -110,9 +111,26 @@ export function register_admin() {
     }
   });
 
+  bot.command("getcache", async (ctx) => {
+    if (!(await verifyAdmin(ctx))) return;
+
+    const stats = getCacheStats();
+    const formattedStats = `
+      📊 Использование памяти:
+      - FAQ: ${stats.faq}
+      - Поиск: ${stats.search}
+      - Вопросы: ${stats.general}
+      - Диалоги пользователей: ${stats.clientDialogCache}
+      - Всего: ${stats.total}
+    `;
+    ctx.reply(formattedStats);
+  });
+
+
+
   bot.command("reload", async (ctx) => {
     if (!(await verifyAdmin(ctx))) return;
-  
+
     try {
       await loadConfig(true); // Принудительная перезагрузка
       await ctx.reply("✅ Конфигурация полностью обновлена!");
@@ -121,5 +139,5 @@ export function register_admin() {
       console.error('Reload Error:', error);
     }
   });
-  
+
 }

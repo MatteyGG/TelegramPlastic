@@ -1,6 +1,8 @@
 {
   "scripts": {
     "start": "npx ts-node bot.ts",
+    "build": "tsc --build --force",
+    "prod": "node dist/bot.js",
     "test": "jest"
   },
   "devDependencies": {

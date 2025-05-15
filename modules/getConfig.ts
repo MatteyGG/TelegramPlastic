@@ -11,10 +11,12 @@ export interface Config {
 
 let config: Config = {} as Config;
 let isConfigLoaded = false;
-const CONFIG_DIR = path.join(__dirname, '../config');
+export const CONFIG_DIR = path.join(__dirname, '../../config');
 
 // Универсальный загрузчик конфигов
 async function loadConfigFile<T>(fileName: string): Promise<T> {
+  mainLogger.info(`CONFIG_DIR: ${CONFIG_DIR}`); // Проверит реальный путь
+  mainLogger.info(`Files in config dir: ${await fs.readdir(CONFIG_DIR)}`); // Список файлов
   const filePath = path.join(CONFIG_DIR, `${fileName}.json`);
   // mainLogger.info(`Loading config from: ${filePath}`);
   const content = await fs.readFile(filePath, 'utf8');

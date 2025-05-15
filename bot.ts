@@ -5,10 +5,10 @@ import { register_commands } from "./handlers/commands";
 import { register_message } from "./handlers/messages";
 import { hydrateFiles } from "@grammyjs/files";
 import { limit } from "@grammyjs/ratelimiter";
-import { getResponse, loadConfig } from "./modules/getConfig";
+import { CONFIG_DIR, getResponse, loadConfig } from "./modules/getConfig";
 import { initSearch } from "./modules/search";
 import { printBanner } from "./modules/printBanner";
-import { mainLogger } from "./modules/logger";
+import { LOGGER_DIR, mainLogger } from "./modules/logger";
 
 
 
@@ -44,6 +44,9 @@ async function bootstrap() {
     await printBanner();
     await registerPlugins();
     await setupBot();
+    mainLogger.info(`LOGGER_DIR: ${LOGGER_DIR}`);
+    mainLogger.info(`LOGGER_DIR: ${CONFIG_DIR}`);
+
     bot.start({
       onStart: (info) => mainLogger.info(`🤖Бот запущен как ${info.username}`),
       drop_pending_updates: true,
@@ -56,6 +59,14 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+setInterval(() => {
+  const usage = process.memoryUsage();
+  mainLogger.info(JSON.stringify({
+    rss: usage.rss / 1024 / 1024 + "MB",
+    heap: usage.heapUsed / 1024 / 1024 + "MB"
+  }));
+}, 30 * 60 * 1000); // Логировать каждые 30 минут
 
 // Обработка ошибок
 bot.catch((err) => {

@@ -1,5 +1,8 @@
 import { LRUCache } from "lru-cache";
 
+
+const MAX_HISTORY_LENGTH = 6; // Сохраняем последние 3 пары вопрос-ответ
+
 type CacheEntry = {
   answer: string;
   timestamp: number;
@@ -48,5 +51,56 @@ export function getCacheStats() {
     faq: caches.faq.size,
     search: caches.search.size,
     general: caches.general.size,
+    clientDialogCache: chatCache.size,
+    total: caches.faq.size + caches.search.size + caches.general.size
   };
 }
+
+
+export type ChatContext = {
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  isRelevant: boolean;
+};
+
+export class ChatCache {
+  private cache: LRUCache<string, ChatContext>;
+  
+  constructor() {
+    this.cache = new LRUCache<string, ChatContext>({
+      max: 1000,
+      ttl: 3600 * 1000,
+    });
+  }
+
+  getOrCreate(chatId: string): ChatContext {
+    if (!this.cache.has(chatId)) {
+      this.cache.set(chatId, {
+        history: [],
+        isRelevant: false,
+      });
+    }
+    return this.cache.get(chatId)!;
+  }
+
+  update(chatId: string, context: ChatContext) {
+    this.cache.set(chatId, context);
+  }
+
+  updateHistory(chatId: string, message: { role: "user" | "assistant"; content: string }): ChatContext {
+    const context = this.getOrCreate(chatId);
+    context.history.push(message);
+    
+    if (context.history.length > MAX_HISTORY_LENGTH * 2) {
+      context.history = context.history.slice(-MAX_HISTORY_LENGTH * 2);
+    }
+    
+    this.cache.set(chatId, context);
+    return context;
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
+}
+
+export const chatCache = new ChatCache();

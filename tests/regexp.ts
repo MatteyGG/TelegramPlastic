@@ -1,3 +1,4 @@
+import { mainLogger } from '../modules/logger';
 import { is3DPrintingRelated } from '../modules/wordtest';
 
 const texts = [

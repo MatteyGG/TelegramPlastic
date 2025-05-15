@@ -39,24 +39,25 @@ export function register_message() {
       const chatId = ctx.chat.id.toString();
       const SYSTEM_PROMPT = getSystemPrompt();
 
-      // 1. Проверка кэша ответов
+      // 1. Check cache
       const cachedAnswer = getCacheResponse('general', userMessage);
       if (cachedAnswer) {
         await ctx.reply(cachedAnswer);
         return;
       }
 
-      // 2. Поиск в FAQ
-      const faqAnswer = findFAQAnswer(userMessage) ?? await searchFAQ(userMessage);
+      // 2. Search in FAQ findFAQAnswer(userMessage) ?? 
+      const faqAnswer =  findFAQAnswer(userMessage);
       if (faqAnswer) {
         await ctx.reply(faqAnswer);
         return;
       }
 
-      // 3. Работа с контекстом через Cache.ts
+      // 3. Context handling through Cache.ts
       let context = chatCache.getOrCreate(chatId);
+      console.log("Initial context:", context);
 
-      // Проверка релевантности
+      // Check relevance
       if (!context.isRelevant) {
         const isRelevant = is3DPrintingRelated(userMessage);
         if (!isRelevant) {
@@ -64,53 +65,62 @@ export function register_message() {
           return;
         }
         context.isRelevant = true;
-        chatCache.update(chatId, context); // Сохраняем изменения
+        console.log("Marking context as relevant");
+        chatCache.update(chatId, context); // Save changes
       }
 
       const instantReply = await ctx.reply("🔍 Анализирую...");
+      console.log(`Instant reply: ${instantReply.message_id}`);
 
-      // Обновляем историю
+      // Update history
       context = chatCache.updateHistory(chatId, {
         role: "user",
         content: userMessage
       });
+      console.log(`Updated context: `, context);
 
-      // Формируем запрос
+      // Prepare request
       const messages: OpenAI.ChatCompletionMessageParam[] = [
         {
           role: "system",
           content: SYSTEM_PROMPT,
         },
         ...context.history.slice(-MAX_HISTORY_LENGTH).map(msg => ({
-          role: msg.role as "user" | "assistant", // Явное указание допустимых ролей
+          role: msg.role as "user" | "assistant", // Explicitly specify the allowed roles
           content: msg.content
         }))
       ];
+      console.log("Request:", messages);
 
-      // Запрос к OpenAI
+      // OpenAI request
       const response = await client.chat.completions.create({
         messages: messages,
         temperature: 0.4,
         model: modelName,
       });
+      console.log("Response:", response);
 
       let answer = response.choices[0].message.content?.replace(/[*#]/g, "") || "";
+      console.log("Answer:", answer);
 
-      // Кэширование ответа
+      // Cache response
       if (!answer.includes("не связан")) {
         setCacheResponse('general', userMessage, answer);
+        console.log(`Caching response for ${userMessage}`);
       }
 
-      // Обновляем историю с ответом
+      // Update history with answer
       chatCache.updateHistory(chatId, {
         role: "assistant",
         content: answer
       });
+      console.log("Updated context:", context);
 
-      // Добавляем материалы
+      // Add materials
       const materialMatches = findMaterialsInText(answer);
       if (materialMatches.length > 0) {
         answer += formatMaterialLinks(materialMatches);
+        console.log("Added materials:", materialMatches);
       }
 
       await ctx.api.editMessageText(ctx.chat.id, instantReply.message_id, answer);

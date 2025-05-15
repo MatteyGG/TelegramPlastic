@@ -24,20 +24,24 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+# Копируем собранный проект и конфиги с правами пользователя node
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/config ./config
 
-# Копируем собранный проект
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/config ./config
+# Создаем папку для логов и назначаем права
+RUN mkdir -p /app/logs && chown -R node:node /app/logs
 
-# Volume для логов и конфигов
-# ("logs/bot.log" )
-# ("logs/requests.log")
+# Только logs монтируем как volume
+VOLUME ["/app/logs"]
 
-VOLUME ["/app/config", "/app/logs"]
+# Переключаемся на непривилегированного пользователя
+USER node
 
-CMD ["node", "dist/bot.js"]
+CMD ["node","--max-old-space-size=4096", "dist/bot.js"]
 
 #docker buildx build  --platform linux/arm64,linux/amd64  -t ghcr.io/matteygg/telegram-plastic:latest  --load .
 # -v "D:/Code/test/config:/app/config" -v "${PWD}/logs:/app/logs"
 #docker run -it --rm --env-file .env ghcr.io/matteygg/telegram-plastic:latest
+# docker run -v "$(PWD)/logs:/app/logs" --env-file .env --memory=4g ghcr.io/matteygg/telegram-plastic:latest
+# docker run -v ./logs:/app/logs --env-file .env ghcr.io/matteygg/telegram-plastic:latest

@@ -30,8 +30,8 @@ async function registerPlugins() {
 
 // Регистрация обработчиков
 async function setupBot() {
-  loadConfig();
-  initSearch();
+  await loadConfig();
+  await initSearch();
   register_commands();
   register_admin(); // Админские команды (/getcache)
   register_message(); // Обработчики сообщений
@@ -66,7 +66,7 @@ setInterval(() => {
     rss: usage.rss / 1024 / 1024 + "MB",
     heap: usage.heapUsed / 1024 / 1024 + "MB"
   }));
-}, 30 * 60 * 1000); // Логировать каждые 30 минут
+}, 30 * 60); // Логировать каждые 30 минут
 
 // Обработка ошибок
 bot.catch((err) => {

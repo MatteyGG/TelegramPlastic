@@ -11,7 +11,7 @@ export interface Config {
 
 let config: Config = {} as Config;
 let isConfigLoaded = false;
-export const CONFIG_DIR = path.join(__dirname, '../../config');
+export const CONFIG_DIR = path.join(__dirname, '../config');
 
 // Универсальный загрузчик конфигов
 async function loadConfigFile<T>(fileName: string): Promise<T> {

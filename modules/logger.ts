@@ -35,7 +35,7 @@ const mainLogger = pino(
     },
     { 
       level: "info",
-      stream: pino.destination(LOGGER_DIR + "/bot.log" ) // Запись в файл
+      stream: pino.destination("/bot.log" ) // Запись в файл
     },
   ])
 );
@@ -47,7 +47,7 @@ const requestLogger = pino({
   formatters: {
     level: (label) => ({ level: label }), // Уровень лога (info/warn/error)
   },
-}, pino.destination(LOGGER_DIR + "/requests.log")); // Запись в файл
+}, pino.destination("/requests.log")); // Запись в файл
 
 
 export { mainLogger, requestLogger };

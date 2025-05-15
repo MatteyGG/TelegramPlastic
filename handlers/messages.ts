@@ -55,7 +55,6 @@ export function register_message() {
 
       // 3. Context handling through Cache.ts
       let context = chatCache.getOrCreate(chatId);
-      console.log("Initial context:", context);
 
       // Check relevance
       if (!context.isRelevant) {
@@ -65,19 +64,16 @@ export function register_message() {
           return;
         }
         context.isRelevant = true;
-        console.log("Marking context as relevant");
         chatCache.update(chatId, context); // Save changes
       }
 
       const instantReply = await ctx.reply("🔍 Анализирую...");
-      console.log(`Instant reply: ${instantReply.message_id}`);
 
       // Update history
       context = chatCache.updateHistory(chatId, {
         role: "user",
         content: userMessage
       });
-      console.log(`Updated context: `, context);
 
       // Prepare request
       const messages: OpenAI.ChatCompletionMessageParam[] = [
@@ -90,7 +86,6 @@ export function register_message() {
           content: msg.content
         }))
       ];
-      console.log("Request:", messages);
 
       // OpenAI request
       const response = await client.chat.completions.create({
@@ -98,15 +93,12 @@ export function register_message() {
         temperature: 0.4,
         model: modelName,
       });
-      console.log("Response:", response);
 
       let answer = response.choices[0].message.content?.replace(/[*#]/g, "") || "";
-      console.log("Answer:", answer);
 
       // Cache response
       if (!answer.includes("не связан")) {
         setCacheResponse('general', userMessage, answer);
-        console.log(`Caching response for ${userMessage}`);
       }
 
       // Update history with answer
@@ -114,13 +106,11 @@ export function register_message() {
         role: "assistant",
         content: answer
       });
-      console.log("Updated context:", context);
 
       // Add materials
       const materialMatches = findMaterialsInText(answer);
       if (materialMatches.length > 0) {
         answer += formatMaterialLinks(materialMatches);
-        console.log("Added materials:", materialMatches);
       }
 
       await ctx.api.editMessageText(ctx.chat.id, instantReply.message_id, answer);

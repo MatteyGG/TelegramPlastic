@@ -41,7 +41,6 @@ USER node
 CMD ["node","--max-old-space-size=4096", "dist/bot.js"]
 
 #docker buildx build  --platform linux/arm64,linux/amd64  -t ghcr.io/matteygg/telegram-plastic:latest  --load .
-# -v "D:/Code/test/config:/app/config" -v "${PWD}/logs:/app/logs"
-#docker run -it --rm --env-file .env ghcr.io/matteygg/telegram-plastic:latest
+
 # docker run -v "$(PWD)/logs:/app/logs" --env-file .env --memory=4g ghcr.io/matteygg/telegram-plastic:latest
-# docker run -v ./logs:/app/logs --env-file .env ghcr.io/matteygg/telegram-plastic:latest
+# docker run -v "/root/telegram-bot/logs:/app/logs:Z" --env-file .env --memory=4g ghcr.io/matteygg/telegram-plastic:latest

@@ -1,23 +1,28 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { mainLogger } from './logger';
+import { Product, SearchProduct } from '../types';
+import { normalizeString } from '../lib/normalizeString';
 
 export interface Config {
   faq: Array<{ keywords: string[]; answer: string }>;
   materials: Record<string, { links: string[] }>;
   responses: Record<string, string>;
   prompt: { system_prompt: string };
+  products: Product[];
 }
 
 let config: Config = {} as Config;
 let isConfigLoaded = false;
-export const CONFIG_DIR = path.join(__dirname, '../../config');
+
+export const CONFIG_PATH = path.join(__dirname, '../config');
+
 
 // Универсальный загрузчик конфигов
 async function loadConfigFile<T>(fileName: string): Promise<T> {
-  mainLogger.info(`CONFIG_DIR: ${CONFIG_DIR}`); // Проверит реальный путь
-  mainLogger.info(`Files in config dir: ${await fs.readdir(CONFIG_DIR)}`); // Список файлов
-  const filePath = path.join(CONFIG_DIR, `${fileName}.json`);
+  mainLogger.info(`CONFIG_PATH: ${CONFIG_PATH}`); // Проверит реальный путь
+  mainLogger.info(`Files in config dir: ${await fs.readdir(CONFIG_PATH)}`); // Список файлов
+  const filePath = path.join(CONFIG_PATH, `${fileName}.json`);
   // mainLogger.info(`Loading config from: ${filePath}`);
   const content = await fs.readFile(filePath, 'utf8');
   return JSON.parse(content);
@@ -28,11 +33,12 @@ export async function loadConfig(force = false): Promise<void> {
   if (isConfigLoaded && !force) return;
   
   try {
-    const [faq, materials, responses, prompt] = await Promise.all([
+    const [faq, materials, responses, prompt, products] = await Promise.all([
       loadConfigFile<{ FAQ: Config['faq'] }>('faq').then(r => r.FAQ),
       loadConfigFile<{ materials: Config['materials'] }>('materials'),
       loadConfigFile<Config['responses']>('responses'),
       loadConfigFile<Config['prompt']>('prompt'),
+      loadConfigFile<{ products: Config['products'] }>('products'),
     ]);
 
     config = {
@@ -40,6 +46,7 @@ export async function loadConfig(force = false): Promise<void> {
       materials: materials.materials,
       responses,
       prompt,
+      products: products.products
     };
 
     isConfigLoaded = true;
@@ -68,4 +75,11 @@ export function getSystemPrompt(): string {
     throw new Error("Конфиг prompt не загружен!");
   }
   return config.prompt.system_prompt;
+}
+
+export function getProducts(): SearchProduct[] {
+  return config.products.map(product => ({
+      ...product,
+      searchKeywords: [...normalizeString(product.title).split(' '), ...normalizeString(product.material).split(' ')]
+    }));
 }

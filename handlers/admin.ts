@@ -3,11 +3,11 @@ import { bot } from "../lib/context";
 import fs from "fs/promises";
 import path from "path";
 import { InputFile } from "grammy";
-import { loadConfig } from "../modules/getConfig";
-import { mainLogger } from "../modules/logger";
+import { CONFIG_PATH, loadConfig } from "../modules/getConfig";
+import { LOGGER_DIR, mainLogger } from "../modules/logger";
 import { getCacheStats } from "../modules/cache";
 
-export const CONFIG_PATH = path.join(__dirname, '../../config/');
+
 
 
 async function verifyAdmin(ctx: Context): Promise<boolean> {
@@ -81,6 +81,26 @@ export function register_admin() {
       await ctx.replyWithDocument(
         new InputFile(configPath),
         { caption: `${type}.json` }
+      );
+    } catch (error) {
+      await ctx.reply("❌ Файл не найден");
+    }
+  });
+
+  
+  // Получение логов
+  bot.command("getlog", async (ctx) => {
+    if (!(await verifyAdmin(ctx))) return;
+
+    const [_, type] = ctx.msg.text.split(" ");
+    if (!type) return ctx.reply("❌ Укажите тип логов (requests/bot)");
+
+    try {
+      const logPath = path.resolve(LOGGER_DIR, `${type}.log`);
+      await fs.access(logPath); // Проверка существования файла
+      await ctx.replyWithDocument(
+        new InputFile(logPath),
+        { caption: `${type}.log` }
       );
     } catch (error) {
       await ctx.reply("❌ Файл не найден");

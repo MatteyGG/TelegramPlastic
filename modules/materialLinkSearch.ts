@@ -1,4 +1,4 @@
-import { getMaterial } from "../modules/getConfig";
+import { getMaterial } from "./getConfig";
 
 export interface MaterialMatch {
   name: string;

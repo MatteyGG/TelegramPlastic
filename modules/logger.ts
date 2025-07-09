@@ -2,53 +2,80 @@
 import path from "path";
 import pino from "pino";
 import pretty from "pino-pretty";
+import type { DestinationStream } from "pino";
+
+import fs from "fs";
 
 const logLevel = process.env.LOG_LEVEL || "info";
 
-export const LOGGER_DIR = path.join(__dirname, '../../logs');
+export const LOGGER_DIR = path.join(__dirname, '../logs');
 
 
-// Форматтер для консоли без форматирования даты
-// Формат времени в читаемом виде
-const timestamp = () => `,"time":"${new Date().toISOString()}"`;
+// Создаем директорию для логов, если её нет
+if (!fs.existsSync(LOGGER_DIR)) {
+    fs.mkdirSync(LOGGER_DIR, { recursive: true });
+}
 
-// Форматтер для консоли
+const timestamp = () => {
+    const date = new Date();
+    const month = `0${date.getMonth() + 1}`.slice(-2);
+    const day = `0${date.getDate()}`.slice(-2);
+    const hour = `0${date.getHours()}`.slice(-2);
+    const minutes = `0${date.getMinutes()}`.slice(-2);
+    const seconds = `0${date.getSeconds()}`.slice(-2);
+
+    return `,"time":"${hour}:${minutes}:${seconds} ${day}-${month}-${date.getFullYear()}"`;
+};
+
 const prettyStream = pretty({
-  colorize: true,           // Цветной вывод
-  crlf: false,              // Отключаем перенос строк
-  errorLikeObjectKeys: ["err", "error"], // Логирование ошибок
-  levelFirst: true,         // Уровень лога в начале строки
-  translateTime: "SYS:yyyy-mm-dd HH:MM:ss", // Читаемый формат времени
-  ignore: "pid,hostname",   // Исключаем стандартные поля
+    colorize: true,
+    crlf: true,
+    errorLikeObjectKeys: ["err", "error"],
+    levelFirst: true,
+    translateTime: "SYS:HH:MM:ss dd-mm-yyyy",
+    ignore: "pid,hostname",
 });
 
-// Общий логгер (консоль + файл)
+// Функция для создания безопасного потока записи
+const createLogStream = (filename: string): DestinationStream => {
+    return pino.destination({
+        dest: path.join(LOGGER_DIR, filename),
+        mkdir: true,
+        sync: true
+    });
+};
+
+const mainStreams = [
+    { stream: prettyStream },
+    { level: "info", stream: createLogStream("bot.log") }
+];
+
 const mainLogger = pino(
-  {
-    level: logLevel,
-    timestamp, // Добавляем время в JSON
-    base: { host: "TelegramBot" }, // Добавляем хост
-  },
-  pino.multistream([
-    { 
-      stream: prettyStream,
+    {
+        timestamp,
+        base: { host: "TelegramBot" },
     },
-    { 
-      level: "info",
-      stream: pino.destination(LOGGER_DIR + "/bot.log" ) // Запись в файл
-    },
-  ])
+    pino.multistream(mainStreams)
 );
 
-// Логгер для запросов (консоль + файл)
 const requestLogger = pino({
-  base: { host: "TelegramBot" },
-  timestamp, 
-  formatters: {
-    level: (label) => ({ level: label }), // Уровень лога (info/warn/error)
-  },
-}, pino.destination(LOGGER_DIR + "/requests.log")); // Запись в файл
+    base: { host: "TelegramBot" },
+    timestamp,
+    formatters: {
+        level: (label) => ({ level: label }),
+    },
+}, createLogStream("requests.log"));
 
+// Корректное закрытие логгеров при завершении процесса
+const handleExit = async () => {
+    await Promise.all([
+        (mainLogger as any).flush(),
+        (requestLogger as any).flush()
+    ]);
+    process.exit(0);
+};
+
+process.on('SIGINT', handleExit);
+process.on('SIGTERM', handleExit);
 
 export { mainLogger, requestLogger };
-

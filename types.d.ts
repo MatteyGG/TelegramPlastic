@@ -15,3 +15,17 @@ export interface Config {
   responses: Record<string, string>;
   prompt: { system_prompt: string };
 }
+
+interface Product {
+  title: string;
+  material: string;
+  diameters: string[];
+  colors: string[];
+  links: string[];
+  weight: string;
+  description: string;
+}
+
+interface SearchProduct extends Product {
+  searchKeywords: string[];
+}

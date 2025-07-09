@@ -5,10 +5,11 @@ import { is3DPrintingRelated } from "../modules/wordtest";
 import { findFAQAnswer } from "../modules/faq";
 import { getCacheResponse, setCacheResponse } from "../modules/cache";
 import { searchFAQ } from "../modules/search";
-import { getSystemPrompt } from "../modules/getConfig";
-import { findMaterialsInText, formatMaterialLinks } from "../modules/materialSearch";
+import { getProducts, getSystemPrompt } from "../modules/getConfig";
+import { findMaterialsInText, formatMaterialLinks } from "../modules/materialLinkSearch";
 import { mainLogger, requestLogger } from "../modules/logger";
 import { ChatContext, chatCache } from "../modules/cache"; // Импорт из Cache.ts
+import { searchProducts } from "../modules/plasticInfoSearch";
 
 dotenv.config();
 
@@ -21,9 +22,10 @@ const modelName = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
 const MAX_HISTORY_LENGTH = 6;
 const client = new OpenAI({ apiKey: token, baseURL: endpoint });
 
+
+
 export function register_message() {
   mainLogger.info("Registering message handler...");
-
   bot.on("message:text", async (ctx) => {
     if (ctx.message?.text?.startsWith("/")) {
       mainLogger.info("Command received:", ctx.message.text);
@@ -39,28 +41,39 @@ export function register_message() {
       const chatId = ctx.chat.id.toString();
       const SYSTEM_PROMPT = getSystemPrompt();
 
+      console.log("Received message:", userMessage);
+      console.log(SYSTEM_PROMPT)
+
       // 1. Check cache
+      console.log("Checking cache...");
       const cachedAnswer = getCacheResponse('general', userMessage);
       if (cachedAnswer) {
+        console.log("Cache hit!");
         await ctx.reply(cachedAnswer);
         return;
       }
 
       // 2. Search in FAQ findFAQAnswer(userMessage) ?? 
-      const faqAnswer =  findFAQAnswer(userMessage);
+      console.log("Searching in FAQ...");
+      const faqAnswer = findFAQAnswer(userMessage);
       if (faqAnswer) {
+        console.log("FAQ answer:", faqAnswer);
         await ctx.reply(faqAnswer);
         return;
       }
+
+      console.log("No FAQ answer, proceeding with context handling...");
 
       // 3. Context handling through Cache.ts
       let context = chatCache.getOrCreate(chatId);
 
       // Check relevance
       if (!context.isRelevant) {
+        console.log("Checking relevance...");
         const isRelevant = is3DPrintingRelated(userMessage);
         if (!isRelevant) {
-          await ctx.reply("Задайте вопрос по 3D-печати, и я помогу! 🖨️");
+          console.log("Not relevant, sending instant reply...");
+          await ctx.reply("Задайте вопрос по 3D-печати, и я помогу! ");
           return;
         }
         context.isRelevant = true;
@@ -75,17 +88,32 @@ export function register_message() {
         content: userMessage
       });
 
+      console.log("Updating history...");
+
+      // Search for product
+      const products = getProducts();
+      let UserfoundProducts = searchProducts(userMessage, products);
+      let ProductDescription = UserfoundProducts.map(product => {
+        return `${product.title} - ${product.material} - Диаметры нити: ${product.diameters.join(", ")} - ${product.colors.join(", ")} - ${product.links.join(", ")} - ${product.description}`;
+      }).join(", ");
+
+      console.log("Searching for product...\nFound products:", ProductDescription);
+
       // Prepare request
       const messages: OpenAI.ChatCompletionMessageParam[] = [
         {
           role: "system",
-          content: SYSTEM_PROMPT,
+          content: SYSTEM_PROMPT + " Описание продукта для тебя(Если продукт найден): " + ProductDescription,
         },
         ...context.history.slice(-MAX_HISTORY_LENGTH).map(msg => ({
           role: msg.role as "user" | "assistant", // Explicitly specify the allowed roles
           content: msg.content
         }))
       ];
+
+      console.log("Request:", messages);
+
+      console.log("Preparing request...");
 
       // OpenAI request
       const response = await client.chat.completions.create({
@@ -96,8 +124,11 @@ export function register_message() {
 
       let answer = response.choices[0].message.content?.replace(/[*#]/g, "") || "";
 
+      console.log("OpenAI response:", answer);
+
       // Cache response
       if (!answer.includes("не связан")) {
+        console.log("Caching response...");
         setCacheResponse('general', userMessage, answer);
       }
 
@@ -107,16 +138,27 @@ export function register_message() {
         content: answer
       });
 
+      console.log("Updating history with answer...");
+
       // Add materials
-      const materialMatches = findMaterialsInText(answer);
-      if (materialMatches.length > 0) {
-        answer += formatMaterialLinks(materialMatches);
-      }
+      // if (!answer.includes("ссылки ссылка")) {
+        const AifoundProducts = searchProducts(answer, products);
+        console.log(" Found products: ", AifoundProducts.length);
+        if (AifoundProducts.length > 0) {
+          answer += AifoundProducts.map(product => {
+            return `\n\n${product.title}:\n${product.links.join(" \n")}`;
+          }).join("");
+        } else if (UserfoundProducts.length > 0) {
+          answer += UserfoundProducts.map(product => {
+            return `\n\n${product.title}:\n${product.links.join(" \n")}`;
+          }).join("");
+        }
+      // }
 
       await ctx.api.editMessageText(ctx.chat.id, instantReply.message_id, answer);
     } catch (error) {
-      await ctx.reply("❌ Ошибка. Попробуйте задать вопрос иначе.");
       console.error("Error:", error);
+      await ctx.reply(" Ошибка. Попробуйте задать вопрос иначе.");
     }
   });
 }

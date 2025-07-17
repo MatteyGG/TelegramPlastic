@@ -16,13 +16,13 @@ export interface Config {
   prompt: { system_prompt: string };
 }
 
-interface Product {
+export interface Product {
+  id: string;
   title: string;
   material: string;
   diameters: string[];
   colors: string[];
   links: string[];
-  weight: string;
   description: string;
 }
 

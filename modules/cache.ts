@@ -1,4 +1,6 @@
 import { LRUCache } from "lru-cache";
+import { Product } from "../types";
+ 
 
 
 const MAX_HISTORY_LENGTH = 6; // Сохраняем последние 3 пары вопрос-ответ
@@ -60,6 +62,9 @@ export function getCacheStats() {
 export type ChatContext = {
   history: Array<{ role: "user" | "assistant"; content: string }>;
   isRelevant: boolean;
+  waitingForProductSelection?: boolean;
+  candidateProducts?: Product[];
+  pendingMessage?: string;
 };
 
 export class ChatCache {

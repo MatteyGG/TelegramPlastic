@@ -1,16 +1,12 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
 import { bot } from "../lib/context";
-import { is3DPrintingRelated } from "../modules/wordtest";
-import { findFAQAnswer } from "../modules/faq";
-import { getCacheResponse, setCacheResponse } from "../modules/cache";
 import { getProducts, getSystemPrompt } from "../modules/getConfig";
-import { findMaterialsInText, formatMaterialLinks } from "../modules/materialLinkSearch";
-import { mainLogger, requestLogger } from "../modules/logger";
+import { mainLogger } from "../modules/logger";
 import { ChatContext, chatCache } from "../modules/cache";
 import { searchProducts } from "../modules/plasticInfoSearch";
-import { completeProductClarification, handleProductClarification, selectProductsFromCandidate } from "../modules/productClarification"; // Добавленный модуль
-import { Product } from "../types"; // Добавить тип Product если нужно
+import { completeProductClarification, handleProductClarification, selectProductsFromCandidate } from "../modules/productClarification";
+import { Product } from "../types";
 
 dotenv.config();
 
@@ -21,7 +17,6 @@ const modelName = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
 const MAX_HISTORY_LENGTH = 6;
 const client = new OpenAI({ apiKey: token, baseURL: endpoint });
 
-// функция для обработки сообщений с продуктами
 async function processMessageWithProducts(
   ctx: any,
   userMessage: string,
@@ -31,20 +26,21 @@ async function processMessageWithProducts(
   const SYSTEM_PROMPT = getSystemPrompt();
 
   // Обновляем историю сообщений
-  let context = chatCache.updateHistory(chatId, {
+  chatCache.updateHistory(chatId, {
     role: "user",
     content: userMessage
   });
 
+  const context = chatCache.getOrCreate(chatId);
   const instantReply = await ctx.reply("🔍 Анализирую...");
 
-  // Формируем описание продуктов ТОЛЬКО если они есть
+  // Формируем описание продуктов
   let productDescription = "";
   if (selectedProducts.length > 0) {
-    productDescription = " Описание выбранных продуктов: " + 
+    productDescription = "\n[Информация о выбранных продуктах]:\n" + 
       selectedProducts.map(product => {
-        return `${product.title} - ${product.material} - Диаметры: ${product.diameters.join(", ")}`;
-      }).join(", ");
+        return `${product.title}: ${product.description.substring(0, 150)}...`;
+      }).join("\n");
   }
 
   // Подготовка запроса к AI
@@ -69,13 +65,7 @@ async function processMessageWithProducts(
   });
 
   let answer = response.choices[0].message.content?.replace(/[*#]/g, "") || "";
-
   console.log("OpenAI response:", answer);
-
-  // Кэширование ответа
-  if (!answer.includes("не связан")) {
-    setCacheResponse('general', userMessage, answer);
-  }
 
   // Обновляем историю ответом ассистента
   chatCache.updateHistory(chatId, {
@@ -83,21 +73,19 @@ async function processMessageWithProducts(
     content: answer
   });
 
-  // Добавляем информацию о материалах
-  const products = getProducts();
-  const AifoundProducts = searchProducts(answer, products);
-  if (AifoundProducts.length > 0) {
-    answer += AifoundProducts.map(product => {
-      return `\n\n${product.title}:\n${product.links.join(" \n")}`;
-    }).join("");
-  } else if (selectedProducts.length > 0) {
-    answer += selectedProducts.map(product => {
-      return `\n\n${product.title}:\n${product.links.join(" \n")}`;
-    }).join("");
+  // Добавляем ссылки на выбранные продукты
+  if (selectedProducts.length > 0) {
+    answer += "\n\n🔗 Ссылки на выбранные продукты:";
+    selectedProducts.forEach(product => {
+      if (product.links.length > 0) {
+        answer += `\n- ${product.title}: ${product.links[0]}`;
+      }
+    });
   }
 
   await ctx.api.editMessageText(ctx.chat.id, instantReply.message_id, answer);
 }
+
 export function register_message() {
   mainLogger.info("Registering message handler...");
   
@@ -107,11 +95,16 @@ export function register_message() {
     const chatId = ctx.chat.id.toString();
     const context = chatCache.getOrCreate(chatId);
 
-    // 4. Поиск продуктов
+    //  Ищем продукты в текущем сообщении
     const products = getProducts();
     let foundProducts = searchProducts(userMessage, products);
+    // const materialProducts = searchProductsByMaterial(userMessage, products);
+    // const generalProducts = searchProducts(userMessage, products);
+    // // Объединяем результаты, убирая дубликаты
+    // let foundProducts = [...new Set([...materialProducts, ...generalProducts])];
+    console.log("Found products:", foundProducts);
 
-    // 5. Уточнение продукта (новый блок)
+    // Уточнение продукта при необходимости
     if (foundProducts.length > 1) {
       const clarificationSent = await handleProductClarification(
         ctx, 
@@ -119,7 +112,6 @@ export function register_message() {
         foundProducts
       );
       
-      // Сохраняем исходные продукты на случай отмены уточнения
       if (clarificationSent) {
         context.candidateProducts = foundProducts;
         chatCache.update(chatId, context);
@@ -127,19 +119,18 @@ export function register_message() {
       }
     }
 
-    // Если продуктов 0 или 1, продолжаем обработку
-    const selectedProducts = foundProducts.length > 0 ? 
-      foundProducts : 
-      [];
-
+    // Если продуктов 0 или 1, сразу обрабатываем
+    const selectedProducts = foundProducts.length > 0 ? foundProducts : [];
     await processMessageWithProducts(ctx, userMessage, selectedProducts);
   });
 
-bot.on("callback_query:data", async (ctx) => {
+  bot.on("callback_query:data", async (ctx) => {
   const data = ctx.callbackQuery.data;
   if (!data.startsWith("product:")) return;
 
-  const productId = data.split(":")[1];
+  const productIndex = data.split(":")[1]; // Получаем индекс или спец. значение
+  console.log("Product index:", productIndex);
+  
   const chatId = ctx.chat?.id.toString();
   if (!chatId) return;
 
@@ -148,42 +139,34 @@ bot.on("callback_query:data", async (ctx) => {
     const pendingMessage = chatContext.pendingMessage || "";
     const candidateProducts = chatContext.candidateProducts || [];
 
-    // Удаляем сообщение с кнопками ТОЛЬКО после обработки выбора
     await ctx.deleteMessage();
-    
-    // Всегда завершаем уточнение после выбора
     completeProductClarification(chatId);
     
-    if (productId === "cancel") {
-      await ctx.answerCallbackQuery({ text: "Уточнение отменено" });
-      // Обрабатываем с исходными продуктами
-      await processMessageWithProducts(ctx, pendingMessage, candidateProducts);
-    } else {
-      const selectedProducts = selectProductsFromCandidate(
-        candidateProducts,
-        productId
-      );
-      
-      if (selectedProducts) {
-        const productNames = selectedProducts.map(p => p.title).join(", ");
-        await ctx.answerCallbackQuery({ 
-          text: `Выбран: ${productNames}` 
-        });
-        
-        await processMessageWithProducts(
-          ctx, 
-          pendingMessage, 
-          selectedProducts
-        );
-      } else {
-        await ctx.answerCallbackQuery({ text: "Продукт не найден" });
-        // Обрабатываем без продуктов
-        await processMessageWithProducts(ctx, pendingMessage, []);
-      }
+    // Всегда получаем массив продуктов
+    const selectedProducts = selectProductsFromCandidate(candidateProducts, productIndex);
+    
+    let productNames = "";
+    if (selectedProducts.length > 0) {
+      productNames = selectedProducts.map(p => p.title).join(", ");
     }
+    
+    // Уведомление пользователя
+    if (productIndex === "cancel") {
+      await ctx.answerCallbackQuery({ text: "Уточнение отменено" });
+    } else if (selectedProducts.length > 0) {
+      await ctx.answerCallbackQuery({ 
+        text: `Выбрано: ${productNames}` 
+      });
+    } else {
+      await ctx.answerCallbackQuery({ text: "Продукт не найден" });
+    }
+    
+    // Обрабатываем сообщение с выбранными продуктами
+    await processMessageWithProducts(ctx, pendingMessage, selectedProducts);
   } catch (error) {
     console.error("Callback error:", error);
     await ctx.answerCallbackQuery({ text: "Ошибка обработки выбора" });
   }
 });
 }
+

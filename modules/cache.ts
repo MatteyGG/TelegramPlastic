@@ -65,6 +65,8 @@ export type ChatContext = {
   waitingForProductSelection?: boolean;
   candidateProducts?: Product[];
   pendingMessage?: string;
+  selectedProducts?: Product[];
+  
 };
 
 export class ChatCache {

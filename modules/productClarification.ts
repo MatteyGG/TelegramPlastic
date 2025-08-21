@@ -14,13 +14,13 @@ export async function handleProductClarification(
   
   // Сохраняем состояние для последующей обработки
   context.waitingForProductSelection = true;
-  context.candidateProducts = foundProducts;
+  context.candidateProducts = foundProducts; // Сохраняем весь массив продуктов
   context.pendingMessage = userMessage;
   chatCache.update(chatId, context);
 
- // Создаем кнопокии
-  const productButtons = foundProducts.map(product => [
-    { text: product.title, callback_data: `product:${product.id}` }
+  // Создаем кнопки для продуктов (вертикально)
+  const productButtons = foundProducts.map((product, index) => [
+    { text: product.title, callback_data: `product:${index}` } // Используем индекс вместо ID
   ]);
 
   // Кнопки "Все" и "Отмена" в одном ряду
@@ -38,25 +38,26 @@ export async function handleProductClarification(
   return true;
 }
 
-//  функция для получения выбранных продуктов
+// Функция для получения выбранных продуктов по индексу
 export function selectProductsFromCandidate(
   candidateProducts: Product[],
-  productId: string
-): Product[] | null {
+  productIndex: string // Принимаем индекс или спец. значение
+): Product[] {
   if (!candidateProducts || candidateProducts.length === 0) {
-    return null;
+    return [];
   }
 
-  let selectedProducts: Product[] = [];
-
-  if (productId === "all") {
-    selectedProducts = [...candidateProducts];
-  } else if (productId !== "cancel") {
-    const product = candidateProducts.find(p => p.id === productId);
-    if (product) selectedProducts = [product];
+  if (productIndex === "all") {
+    return [...candidateProducts];
+  } else if (productIndex === "cancel") {
+    return [];
+  } else {
+    const index = parseInt(productIndex);
+    if (!isNaN(index) && index >= 0 && index < candidateProducts.length) {
+      return [candidateProducts[index]];
+    }
+    return [];
   }
-
-  return selectedProducts.length > 0 ? selectedProducts : null;
 }
 
 // Функция для завершения процесса уточнения

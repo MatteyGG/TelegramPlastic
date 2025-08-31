@@ -1,0 +1,60 @@
+D:.
+│   .dockerignore
+│   .env
+│   .gitignore
+│   bot.log
+│   bot.ts
+│   Dockerfile
+│   jest.config.ts
+│   metrics.json
+│   package-lock.json
+│   package.json
+│   project-structure.txt
+│   README
+│   requests.log
+│   structure.md
+│   tsconfig.json
+│   types.d.ts
+│   
+├───.vscode
+│       settings.json
+│       
+├───config
+│       faq.json
+│       materials.json
+│       products.json
+│       prompt.json
+│       responses.json
+│       
+├───handlers
+│       admin.ts
+│       commands.ts
+│       messages.ts
+│       
+├───lib
+│       context.ts
+│       normalizeString.js
+│       normalizeString.ts
+│       text.ts
+│       
+├───logs
+│       bot.log
+│       requests.log
+│       
+└───modules
+        cache.js
+        cache.ts
+        faq.ts
+        getConfig.js
+        getConfig.ts
+        isAdmin.ts
+        logger.js
+        logger.ts
+        materialLinkSearch.ts
+        plasticInfoSearch.js
+        plasticInfoSearch.ts
+        printBanner.ts
+        productClarification.ts
+        search.js
+        search.ts
+        wordtest.ts

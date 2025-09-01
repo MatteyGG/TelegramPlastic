@@ -1,15 +1,13 @@
 // logger.ts
-import path from "path";
+import * as path from "path";
+import * as fs from "fs";
 import pino from "pino";
 import pretty from "pino-pretty";
 import type { DestinationStream } from "pino";
 
-import fs from "fs";
-
 const logLevel = process.env.LOG_LEVEL || "info";
 
-export const LOGGER_DIR = path.join(__dirname, '../logs');
-
+export const LOGGER_DIR = path.join(process.cwd(), 'logs');
 
 // Создаем директорию для логов, если её нет
 if (!fs.existsSync(LOGGER_DIR)) {

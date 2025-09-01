@@ -5,10 +5,11 @@ import { register_commands } from "./handlers/commands";
 import { register_message } from "./handlers/messages";
 import { hydrateFiles } from "@grammyjs/files";
 import { limit } from "@grammyjs/ratelimiter";
-import { CONFIG_PATH, getResponse, loadConfig } from "./modules/getConfig";
+import { getResponse, loadConfig } from "./modules/getConfig";
 import { initSearch } from "./modules/search";
 import { printBanner } from "./modules/printBanner";
 import { LOGGER_DIR, mainLogger } from "./modules/logger";
+import { chatCache } from "./modules/cache";
 
 
 
@@ -31,7 +32,6 @@ async function registerPlugins() {
 // Регистрация обработчиков
 async function setupBot() {
   await loadConfig();
-  await initSearch();
   register_commands();
   register_admin(); // Админские команды (/getcache)
   register_message(); // Обработчики сообщений
@@ -45,7 +45,7 @@ async function bootstrap() {
     await registerPlugins();
     await setupBot();
     mainLogger.info(`LOGGER_DIR: ${LOGGER_DIR}`);
-    mainLogger.info(`LOGGER_DIR: ${CONFIG_PATH}`);
+    mainLogger.info(`LOGGER_DIR: ${LOGGER_DIR}`);
 
     bot.start({
       onStart: (info) => mainLogger.info(`🤖Бот запущен как ${info.username}`),
@@ -60,13 +60,19 @@ async function bootstrap() {
 
 bootstrap();
 
-setInterval(() => {
-  const usage = process.memoryUsage();
-  mainLogger.info(JSON.stringify({
-    rss: usage.rss / 1024 / 1024 + "MB",
-    heap: usage.heapUsed / 1024 / 1024 + "MB"
-  }));
-}, 30 * 60 * 1000); // Логировать каждые 30 минут
+setInterval(async () => {
+  console.log('Периодическое сохранение истории диалогов...');
+  
+  // Получаем все активные ключи кэша
+  const activeChats = Array.from(chatCache['cache'].keys());
+  
+  // Сохраняем историю для каждого активного чата
+  for (const chatId of activeChats) {
+    await chatCache.forceSave(chatId);
+  }
+  
+  console.log(`Сохранена история для ${activeChats.length} активных диалогов`);
+}, 5 * 60 * 1000); // 5 минут
 
 // Обработка ошибок
 bot.catch((err) => {

@@ -17,12 +17,13 @@ export interface Config {
 }
 
 export interface Product {
-  id: string;
+  id: number; 
   title: string;
   material: string;
   diameters: string[];
   colors: string[];
   links: string[];
+  weight: string;
   description: string;
 }
 

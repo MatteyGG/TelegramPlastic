@@ -1,9 +1,8 @@
 import { LRUCache } from "lru-cache";
 import { Product } from "../types";
- 
+import { saveDialogMessage } from "./dialogHistory"; // Импортируем функцию сохранения
 
-
-const MAX_HISTORY_LENGTH = 6; // Сохраняем последние 3 пары вопрос-ответ
+const MAX_HISTORY_LENGTH = 6;
 
 type CacheEntry = {
   answer: string;
@@ -12,20 +11,19 @@ type CacheEntry = {
 
 const CACHE_CONFIG = {
   FAQ: {
-    max: 50, // 50 последних FAQ-ответов
-    ttl: 3600 * 1000 * 2, // 2 часа
+    max: 50,
+    ttl: 3600 * 1000 * 2,
   },
   SEARCH: {
-    max: 100, // 100 поисковых запросов
-    ttl: 3600 * 1000, // 1 час
+    max: 100,
+    ttl: 3600 * 1000,
   },
   GENERAL: {
-    max: 30, // 30 общих ответов
-    ttl: 3600 * 1000 * 24, // 24 часа
+    max: 30,
+    ttl: 3600 * 1000 * 24,
   }
 };
 
-// Создаем отдельные кэши
 export const caches = {
   faq: new LRUCache<string, CacheEntry>(CACHE_CONFIG.FAQ),
   search: new LRUCache<string, CacheEntry>(CACHE_CONFIG.SEARCH),
@@ -47,7 +45,6 @@ export function setCacheResponse(
   });
 }
 
-// Для админ-панели (опционально)
 export function getCacheStats() {
   return {
     faq: caches.faq.size,
@@ -58,7 +55,6 @@ export function getCacheStats() {
   };
 }
 
-
 export type ChatContext = {
   history: Array<{ role: "user" | "assistant"; content: string }>;
   isRelevant: boolean;
@@ -66,9 +62,8 @@ export type ChatContext = {
   candidateProducts?: Product[];
   pendingMessage?: string;
   selectedProducts?: Product[];
-  
+  username?: string; 
 };
-
 export class ChatCache {
   private cache: LRUCache<string, ChatContext>;
   
@@ -76,6 +71,12 @@ export class ChatCache {
     this.cache = new LRUCache<string, ChatContext>({
       max: 1000,
       ttl: 3600 * 1000,
+      // Добавляем dispose-функцию для сохранения истории при удалении
+      dispose: async (value, key, reason) => {
+        if (reason === 'evict' || reason === 'delete') {
+          await this.saveHistoryToDB(key, value);
+        }
+      }
     });
   }
 
@@ -103,6 +104,33 @@ export class ChatCache {
     
     this.cache.set(chatId, context);
     return context;
+  }
+
+  // Метод для сохранения истории в БД
+private async saveHistoryToDB(chatId: string, context: ChatContext) {
+  try {
+    // Сохраняем все сообщения из истории
+    for (const message of context.history) {
+      await saveDialogMessage(chatId, {
+        role: message.role,
+        message: message.content,
+        products: context.selectedProducts,
+        username: context.username // Передаем username
+      });
+    }
+    
+    console.log(`История диалога ${chatId} сохранена в БД`);
+  } catch (error) {
+    console.error('Ошибка при сохранении истории диалога в БД:', error);
+  }
+}
+
+  // Метод для принудительного сохранения истории
+  async forceSave(chatId: string) {
+    const context = this.cache.get(chatId);
+    if (context) {
+      await this.saveHistoryToDB(chatId, context);
+    }
   }
 
   get size(): number {

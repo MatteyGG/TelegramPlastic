@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  title       String
+  material    String
+  diameters   String   // JSON string
+  colors      String   // JSON string
+  links       String   // JSON string
+  weight      String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("products")
+}
+
+model Material {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  links String // JSON string
+
+  @@map("materials")
+}
+
+model DialogHistory {
+  id        Int      @id @default(autoincrement())
+  chatId    String
+  username  String?  // Добавляем поле для username
+  role      String   // 'user' или 'assistant'
+  message   String
+  timestamp DateTime @default(now())
+  products  String?  // JSON с продуктами, если были упомянуты
+
+  @@index([chatId])
+  @@index([timestamp])
+  @@index([username]) 
+}
+model Response {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+
+  @@map("responses")
+}
+
+model Prompt {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+
+  @@map("prompts")
+}

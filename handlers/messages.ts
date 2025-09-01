@@ -90,11 +90,16 @@ export function register_message() {
   mainLogger.info("Registering message handler...");
   
   // Обработчик текстовых сообщений
-  bot.on("message:text", async (ctx) => {
-    const userMessage = ctx.message.text;
-    const chatId = ctx.chat.id.toString();
-    const context = chatCache.getOrCreate(chatId);
-
+bot.on("message:text", async (ctx) => {
+  const userMessage = ctx.message.text;
+  const chatId = ctx.chat.id.toString();
+  const context = chatCache.getOrCreate(chatId);
+  
+  // Сохраняем username пользователя в кэш
+  if (ctx.from?.username && !context.username) {
+    context.username = ctx.from.username;
+    chatCache.update(chatId, context);
+  }
     //  Ищем продукты в текущем сообщении
     const products = getProducts();
     let foundProducts = searchProducts(userMessage, products);

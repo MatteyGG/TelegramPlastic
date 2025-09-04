@@ -1,60 +1,134 @@
+��������� �����
+�������� ����� ����: 0CE1-148E
 D:.
-│   .dockerignore
-│   .env
-│   .gitignore
-│   bot.log
-│   bot.ts
-│   Dockerfile
-│   jest.config.ts
-│   metrics.json
-│   package-lock.json
-│   package.json
-│   project-structure.txt
-│   README
-│   requests.log
-│   structure.md
-│   tsconfig.json
-│   types.d.ts
-│   
-├───.vscode
-│       settings.json
-│       
-├───config
-│       faq.json
-│       materials.json
-│       products.json
-│       prompt.json
-│       responses.json
-│       
-├───handlers
-│       admin.ts
-│       commands.ts
-│       messages.ts
-│       
-├───lib
-│       context.ts
-│       normalizeString.js
-│       normalizeString.ts
-│       text.ts
-│       
-├───logs
-│       bot.log
-│       requests.log
-│       
-└───modules
-        cache.js
-        cache.ts
-        faq.ts
-        getConfig.js
-        getConfig.ts
-        isAdmin.ts
-        logger.js
-        logger.ts
-        materialLinkSearch.ts
-        plasticInfoSearch.js
-        plasticInfoSearch.ts
-        printBanner.ts
-        productClarification.ts
-        search.js
-        search.ts
-        wordtest.ts
+|   .dockerignore
+|   .env
+|   .gitignore
+|   bot.log
+|   bot.ts
+|   docker-compose.yml
+|   Dockerfile
+|   jest.config.ts
+|   metrics.json
+|   migrate-data.ts
+|   package-lock.json
+|   package.json
+|   project-structure.txt
+|   README
+|   requests.log
+|   structure.md
+|   tsconfig.json
+|   types.d.ts
+|   
+|       
+|       
+|   |   bot.js
+|   |   jest.config.js
+|   |   tsconfig.tsbuildinfo
+|   |   
+|   +---config
+|   |       faq.json
+|   |       materials.json
+|   |       products.json
+|   |       prompt.json
+|   |       responses.json
+|   |       
+|   +---handlers
+|   |       admin.js
+|   |       commands.js
+|   |       messages.js
+|   |       
+|   +---lib
+|   |       context.js
+|   |       normalizeString.js
+|   |       text.js
+|   |       
+|   +---logs
+|   |       bot.log
+|   |       requests.log
+|   |       
+|   +---modules
+|   |       cache.js
+|   |       faq.js
+|   |       getConfig.js
+|   |       isAdmin.js
+|   |       logger.js
+|   |       materialLinkSearch.js
+|   |       material_link_Search.js
+|   |       plasticInfoSearch.js
+|   |       printBanner.js
+|   |       productClarification.js
+|   |       search.js
+|   |       wordtest.js
+|   |       
+|   +---scripts
+|   |       migrate-data.js
+|   |       
+|   \---tests
+|           cache.test.js
+|           getConfig.test.js
+|           regexp.js
+|           search.test.js
+|           searchTest.js
+|           
++---handlers
+|       admin.ts
+|       commands.ts
+|       messages.ts
+|       
++---lib
+|       context.ts
+|       normalizeString.js
+|       normalizeString.ts
+|       text.ts
+|       
++---logs
+|       bot.log
+|       requests.log
+|       
++---modules
+|       cache.ts
+|       database.ts
+|       dialogHistory.ts
+|       faq.ts
+|       getConfig.ts
+|       isAdmin.ts
+|       logger.ts
+|       materialLinkSearch.ts
+|       plasticInfoSearch.js
+|       plasticInfoSearch.ts
+|       printBanner.ts
+|       productClarification.ts
+|       search.ts
+|       wordtest.ts
+|       
++---prisma
+|   |   schema.prisma
+|   |   
+|   \---migrations
+|       |   migration_lock.toml
+|       |   
+|       +---20250831154058_init
+|       |       migration.sql
+|       |       
+|       +---20250831165128_add_dialog_history
+|       |       migration.sql
+|       |       
+|       +---20250831180653_add_username_to_dialog_history
+|       |       migration.sql
+|       |       
+|       \---20250901093344_delete_materials_model
+|               migration.sql
+|               
++---scripts
+|       migrate-data.ts
+|       
+\---tests
+        cache.test.ts
+        getConfig.test.ts
+        regexp.ts
+        search.test.js
+        search.test.ts
+        searchTest.js
+        searchTest.ts
+        

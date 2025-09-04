@@ -1,4 +1,3 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
@@ -14,16 +13,24 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
-    build: .
+    image: ghcr.io/matteygg/telegram-plastic:latest
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      DATABASE_HOST: postgres  # Для wait-for-it
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - app-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:

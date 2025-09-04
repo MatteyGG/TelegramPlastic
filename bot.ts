@@ -22,7 +22,7 @@ async function registerPlugins() {
   bot.api.config.use(hydrateFiles(bot.token));
   bot.use(limit({
     timeFrame: 3000,
-    limit: 1,
+    limit: 3,
     onLimitExceeded: async (ctx) => {
       await ctx.reply(getResponse("ratelimit"));
     },
@@ -60,19 +60,6 @@ async function bootstrap() {
 
 bootstrap();
 
-setInterval(async () => {
-  console.log('Периодическое сохранение истории диалогов...');
-  
-  // Получаем все активные ключи кэша
-  const activeChats = Array.from(chatCache['cache'].keys());
-  
-  // Сохраняем историю для каждого активного чата
-  for (const chatId of activeChats) {
-    await chatCache.forceSave(chatId);
-  }
-  
-  console.log(`Сохранена история для ${activeChats.length} активных диалогов`);
-}, 5 * 60 * 1000); // 5 минут
 
 // Обработка ошибок
 bot.catch((err) => {

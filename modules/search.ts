@@ -1,5 +1,5 @@
 import lunr from "lunr";
-import { getFAQ, loadConfig } from "./getConfig";
+import { loadConfig } from "./getConfig";
 import { caches } from "./cache";
 
 type FAQItem = {
@@ -14,7 +14,6 @@ export async function initSearch() {
   // Загружаем конфигурацию перед созданием индекса
   if (!faqData.length) {
     await loadConfig();
-    faqData = getFAQ();
   }
 
   searchIndex = lunr(function () {

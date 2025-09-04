@@ -76,7 +76,7 @@ async function loadProductsFromDB(): Promise<Product[]> {
     diameters: JSON.parse(product.diameters),
     colors: JSON.parse(product.colors),
     links: JSON.parse(product.links),
-    weight: product.weight,
+    weight: product.weight ?? '',
     description: product.description
   }));
 }

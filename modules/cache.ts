@@ -71,7 +71,6 @@ export class ChatCache {
     this.cache = new LRUCache<string, ChatContext>({
       max: 1000,
       ttl: 3600 * 1000,
-      // Добавляем dispose-функцию для сохранения истории при удалении
       dispose: async (value, key, reason) => {
         if (reason === 'evict' || reason === 'delete') {
           await this.saveHistoryToDB(key, value);

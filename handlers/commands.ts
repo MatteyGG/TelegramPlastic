@@ -1,6 +1,6 @@
 import { bot } from "../lib/context";
 import { getResponse } from "../modules/getConfig";
-import { verifyAdmin } from "../modules/isAdmin";
+import { verifyAdmin } from "../lib/isAdmin";
 import { mainLogger } from "../modules/logger";
 
 export function register_commands() {

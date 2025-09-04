@@ -8,18 +8,6 @@ async function migrateData() {
   console.log('Начинаем миграцию данных...');
 
   try {
-    // Мигрируем материалы
-    const materialsData = JSON.parse(await fs.readFile(path.join(__dirname, '../config/materials.json'), 'utf-8'));
-    console.log('Мигрируем материалы...');
-    
-    for (const [name, data] of Object.entries(materialsData.materials)) {
-      await prisma.material.create({
-        data: {
-          name,
-          links: JSON.stringify((data as any).links)
-        }
-      });
-    }
 
     // Мигрируем продукты
     const productsData = JSON.parse(await fs.readFile(path.join(__dirname, '../config/products.json'), 'utf-8'));
@@ -35,19 +23,6 @@ async function migrateData() {
           links: JSON.stringify(product.links || []),
           weight: product.weight || '',
           description: product.description || ''
-        }
-      });
-    }
-
-    // Мигрируем FAQ
-    const faqData = JSON.parse(await fs.readFile(path.join(__dirname, '../config/faq.json'), 'utf-8'));
-    console.log('Мигрируем FAQ...');
-    
-    for (const item of faqData.FAQ) {
-      await prisma.fAQ.create({
-        data: {
-          keywords: JSON.stringify(item.keywords),
-          answer: item.answer
         }
       });
     }

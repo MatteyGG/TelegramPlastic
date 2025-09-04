@@ -39,7 +39,7 @@ async function processMessageWithProducts(
   if (selectedProducts.length > 0) {
     productDescription = "\n[Информация о выбранных продуктах]:\n" + 
       selectedProducts.map(product => {
-        return `${product.title}: ${product.description.substring(0, 150)}...`;
+        return `${product.title}: ${product.description.substring(0, 200)}... (Из чего состоит: ${product.material}, Доступные диаметры: ${product.diameters}, Цвета: ${product.colors})`;
       }).join("\n");
   }
 

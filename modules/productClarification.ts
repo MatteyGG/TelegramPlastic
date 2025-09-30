@@ -1,3 +1,5 @@
+// src/modules/productClarification.ts
+
 import { Context } from "grammy";
 import { ChatContext, chatCache } from "./cache";
 import { Product } from "../types";
@@ -5,7 +7,8 @@ import { Product } from "../types";
 export async function handleProductClarification(
   ctx: Context,
   userMessage: string,
-  foundProducts: Product[]
+  foundProducts: Product[],
+  aiRecommendation?: string
 ) {
   const chatId = ctx.chat?.id.toString();
   if (!chatId) return false;
@@ -14,13 +17,14 @@ export async function handleProductClarification(
   
   // Сохраняем состояние для последующей обработки
   context.waitingForProductSelection = true;
-  context.candidateProducts = foundProducts; // Сохраняем весь массив продуктов
+  context.candidateProducts = foundProducts;
   context.pendingMessage = userMessage;
+  context.aiRecommendation = aiRecommendation; // Сохраняем рекомендацию AI
   chatCache.update(chatId, context);
 
   // Создаем кнопки для продуктов (вертикально)
   const productButtons = foundProducts.map((product, index) => [
-    { text: product.title, callback_data: `product:${index}` } // Используем индекс вместо ID
+    { text: product.title, callback_data: `product:${index}` }
   ]);
 
   // Кнопки "Все" и "Отмена" в одном ряду

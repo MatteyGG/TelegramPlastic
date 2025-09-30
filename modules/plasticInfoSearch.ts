@@ -1,5 +1,6 @@
+// src/modules/plasticInfoSearch.ts
+
 import { Product, SearchProduct } from '../types';
-import { normalizeString } from '../lib/normalizeString';
 import { mainLogger } from './logger';
 
 // Критически важные материалы с их синонимами
@@ -16,6 +17,77 @@ const CRITICAL_MATERIALS: Record<string, string[]> = {
   'pp': ['pp', 'рр', 'пп', 'полипропилен'],
   'nylon': ['nylon', 'nуlon', 'нейлон'],
   'pmma': ['pmma', 'pmmа', 'пмма'],
+};
+
+// src/modules/plasticInfoSearch.ts
+
+/**
+ * Поиск пластиков на основе рекомендаций AI
+ */
+/**
+ * Улучшенный поиск продуктов по рекомендациям AI
+ * Теперь ищет только продукты, материал которых ТОЧНО совпадает с одним из рекомендованных
+ */
+export function searchProductsByAIMaterials(aiRecommendation: string, products: any[]) {
+  const recommendedMaterials = parseMaterialsFromAIResponse(aiRecommendation);
+  
+  return products.filter((product: { material: string; }) => {
+    const productMaterial = product.material.toUpperCase();
+    
+    // Только точное совпадение с основными материалами
+    return recommendedMaterials.some(material => 
+      productMaterial === material || 
+      productMaterial === material + '-G' // Для PET-G
+    );
+  });
+}
+// Вспомогательная функция для нормализации строк
+function normalizeString(str: string): string {
+  return str.toLowerCase().trim();
+}
+
+/**
+ * Парсит список материалов из ответа AI в формате [MATERIAL1, MATERIAL2, MATERIAL3]
+ */
+function parseMaterialsFromAIResponse(aiResponse: string): string[] {
+  try {
+    const match = aiResponse.match(/\[([^\]]+)\]/);
+    if (match) {
+      const materialsString = match[1];
+      return materialsString
+        .split(',')
+        .map(material => material.trim().toUpperCase())
+        .filter(material => material.length > 0);
+    }
+    
+    return aiResponse
+      .split(',')
+      .map(material => material.trim().toUpperCase())
+      .filter(material => material.length > 0)
+      .slice(0, 3);
+  } catch (error) {
+    console.error("Error parsing materials from AI response:", error);
+    return [];
+  }
+}
+
+/**
+ * Улучшенный поиск с учетом контекста применения
+ */
+export const searchProductsWithContext = (
+  userMessage: string,
+  aiRecommendation: string,
+  products: SearchProduct[]
+): SearchProduct[] => {
+  const productsByMaterial = searchProductsByAIMaterials(aiRecommendation, products);
+  
+  // Если по материалам ничего не найдено, используем старый алгоритм как fallback
+  if (productsByMaterial.length === 0) {
+    mainLogger.debug('Fallback to original search algorithm');
+    return searchProducts(userMessage, products);
+  }
+  
+  return productsByMaterial;
 };
 
 /**

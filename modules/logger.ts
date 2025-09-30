@@ -45,7 +45,7 @@ const createLogStream = (filename: string): DestinationStream => {
 
 const mainStreams = [
     { stream: prettyStream },
-    { level: "info", stream: createLogStream("bot.log") }
+    { level: "debug", stream: createLogStream("bot.log") }
 ];
 
 const mainLogger = pino(
@@ -64,16 +64,32 @@ const requestLogger = pino({
     },
 }, createLogStream("requests.log"));
 
-// Корректное закрытие логгеров при завершении процесса
-const handleExit = async () => {
-    await Promise.all([
-        (mainLogger as any).flush(),
-        (requestLogger as any).flush()
-    ]);
-    process.exit(0);
+
+export const flushLogger = async (): Promise<void> => {
+  try {
+    if (typeof (mainLogger as any).flush === 'function') {
+      await (mainLogger as any).flush();
+    }
+    if (typeof (requestLogger as any).flush === 'function') {
+      await (requestLogger as any).flush();
+    }
+    // Принудительное завершение записи
+    await new Promise(resolve => setTimeout(resolve, 200));
+  } catch (error) {
+    console.error('Logger flush error:', error);
+  }
 };
 
-process.on('SIGINT', handleExit);
-process.on('SIGTERM', handleExit);
+// Корректное закрытие логгеров при завершении процесса
+const handleExit = async (signal: string) => {
+  console.log(`🔄 Received ${signal}, flushing logs...`);
+  await flushLogger();
+  process.exit(0);
+};
 
+process.on('SIGINT', () => handleExit('SIGINT'));
+process.on('SIGTERM', () => handleExit('SIGTERM'));
+process.on('beforeExit', async () => {
+  await flushLogger();
+});
 export { mainLogger, requestLogger };

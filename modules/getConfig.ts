@@ -47,7 +47,7 @@ async function loadResponsesFromDB(): Promise<Record<string, string>> {
   const responses = await prisma.response.findMany();
   const result: Record<string, string> = {};
   
-  responses.forEach(item => {
+  responses.forEach((item: { key: string | number; value: string; }) => {
     result[item.key] = item.value;
   });
   
@@ -69,7 +69,7 @@ async function loadPromptFromDB(): Promise<{ system_prompt: string }> {
 async function loadProductsFromDB(): Promise<Product[]> {
   const products = await prisma.product.findMany();
   
-  return products.map(product => ({
+  return products.map((product: { id: any; title: any; material: any; diameters: string; colors: string; links: string; weight: any; description: any; }) => ({
     id: product.id, 
     title: product.title,
     material: product.material,

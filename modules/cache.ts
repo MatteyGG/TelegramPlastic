@@ -56,6 +56,7 @@ export function getCacheStats() {
 }
 
 export type ChatContext = {
+  aiRecommendation: string | undefined;
   history: Array<{ role: "user" | "assistant"; content: string }>;
   isRelevant: boolean;
   waitingForProductSelection?: boolean;
@@ -84,6 +85,7 @@ export class ChatCache {
       this.cache.set(chatId, {
         history: [],
         isRelevant: false,
+        aiRecommendation: undefined
       });
     }
     return this.cache.get(chatId)!;

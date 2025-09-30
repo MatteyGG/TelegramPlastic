@@ -28,17 +28,21 @@ const CRITICAL_MATERIALS: Record<string, string[]> = {
  * Улучшенный поиск продуктов по рекомендациям AI
  * Теперь ищет только продукты, материал которых ТОЧНО совпадает с одним из рекомендованных
  */
+// src/modules/plasticInfoSearch.ts
+
 export function searchProductsByAIMaterials(aiRecommendation: string, products: any[]) {
   const recommendedMaterials = parseMaterialsFromAIResponse(aiRecommendation);
   
   return products.filter((product: { material: string; }) => {
     const productMaterial = product.material.toUpperCase();
     
-    // Только точное совпадение с основными материалами
-    return recommendedMaterials.some(material => 
-      productMaterial === material || 
-      productMaterial === material + '-G' // Для PET-G
-    );
+    // Нормализуем материалы для сравнения (убираем дефисы)
+    const normalizedProductMaterial = productMaterial.replace(/-/g, '');
+    
+    return recommendedMaterials.some(material => {
+      const normalizedMaterial = material.replace(/-/g, '');
+      return normalizedProductMaterial === normalizedMaterial;
+    });
   });
 }
 // Вспомогательная функция для нормализации строк

@@ -27,23 +27,31 @@ const MAX_HISTORY_LENGTH = 6;
 const client = new OpenAI({ apiKey: token, baseURL: endpoint });
 const tokenTracker = TokenTracker.getInstance();
 
-// Вспомогательные функции
+// Вспомогательные функции для форматирования
 function parseMaterialsFromAIResponse(aiResponse: string): string[] {
   try {
+    console.log("Raw AI response for parsing:", aiResponse); // ДЛЯ ОТЛАДКИ
+
     const match = aiResponse.match(/\[([^\]]+)\]/);
     if (match) {
       const materialsString = match[1];
-      return materialsString
+      const materials = materialsString
         .split(",")
         .map((material) => material.trim().toUpperCase())
         .filter((material) => material.length > 0);
+
+      console.log("Parsed materials:", materials); // ДЛЯ ОТЛАДКИ
+      return materials;
     }
 
-    return aiResponse
+    const fallback = aiResponse
       .split(",")
       .map((material) => material.trim().toUpperCase())
       .filter((material) => material.length > 0)
       .slice(0, 3);
+
+    console.log("Fallback materials:", fallback); // ДЛЯ ОТЛАДКИ
+    return fallback;
   } catch (error) {
     console.error("Error parsing materials from AI response:", error);
     return [];
@@ -53,7 +61,8 @@ function parseMaterialsFromAIResponse(aiResponse: string): string[] {
 function createProductDescription(products: Product[]): string {
   if (products.length === 0) return "";
 
-  return "\n=== КОНКРЕТНЫЕ ПРОДУКТЫ ДЛЯ РЕКОМЕНДАЦИИ ===\n" +
+  return (
+    "\n=== КОНКРЕТНЫЕ ПРОДУКТЫ ДЛЯ РЕКОМЕНДАЦИИ ===\n" +
     products
       .map((product, index) => {
         return `ПРОДУКТ ${index + 1}:
@@ -61,7 +70,8 @@ function createProductDescription(products: Product[]): string {
 🧪 Материал: ${product.material}
 📝 Описание: ${product.description}`;
       })
-      .join("\n\n");
+      .join("\n\n")
+  );
 }
 
 function createStrictProductInstructions(): string {
@@ -85,8 +95,24 @@ function createStrictProductInstructions(): string {
 - Добавлять ссылки на продукты в текст ответа`;
 }
 
-// Основные AI функции
-async function getAIRecommendation(userMessage: string, systemPrompt: string): Promise<string> {
+function createProductLinksMessage(products: Product[]): string {
+  if (products.length === 0) return "";
+
+  let message = "\n\n🔗 **Ссылки на продукты:**";
+
+  products.forEach((product) => {
+    if (product.links.length > 0) {
+      message += `\n• ${product.title}: ${product.links[0]}`;
+    }
+  });
+
+  return message;
+}
+
+async function getAIRecommendation(
+  userMessage: string,
+  systemPrompt: string
+): Promise<string> {
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
     {
@@ -129,9 +155,16 @@ async function getAIRecommendation(userMessage: string, systemPrompt: string): P
   return response.choices[0].message.content || "";
 }
 
+// Используется функция из plasticInfoSearch.ts
+function findProductsByMaterials(recommendedMaterials: string[]): Product[] {
+  const materialsString = recommendedMaterials.join(", ");
+  const products = getProducts();
+  return searchProductsByAIMaterials(materialsString, products);
+}
+
 async function getFinalAIResponse(
   userMessage: string,
-  recommendedMaterials: string,
+  recommendedMaterials: string[],
   foundProducts: Product[],
   systemPrompt: string,
   history: any[]
@@ -140,14 +173,16 @@ async function getFinalAIResponse(
   const strictInstructions = createStrictProductInstructions();
 
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { 
-      role: "system", 
-      content: `${systemPrompt}\n\n${productDescription}\n\n${strictInstructions}` 
+    {
+      role: "system",
+      content: `${systemPrompt}\n\n${productDescription}\n\n${strictInstructions}`,
     },
     ...history.slice(-MAX_HISTORY_LENGTH),
-    { 
-      role: "user", 
-      content: `Рекомендованные материалы: ${recommendedMaterials}. Задача: ${userMessage}` 
+    {
+      role: "user",
+      content: `Рекомендованные материалы: ${recommendedMaterials.join(
+        ", "
+      )}. Задача: ${userMessage}`,
     },
   ];
 
@@ -178,21 +213,6 @@ async function getFinalAIResponse(
   return response.choices[0].message.content?.replace(/[*#]/g, "") || "";
 }
 
-function createProductLinksMessage(products: Product[]): string {
-  if (products.length === 0) return "";
-
-  let message = "\n\n🔗 **Ссылки на продукты:**";
-  
-  products.forEach((product) => {
-    if (product.links.length > 0) {
-      message += `\n• ${product.title}: ${product.links[0]}`;
-    }
-  });
-  
-  return message;
-}
-
-// Основная логика обработки сообщений
 async function processMessageWithTwoStepAI(ctx: any, userMessage: string) {
   const chatId = ctx.chat.id.toString();
   const SYSTEM_PROMPT = getSystemPrompt();
@@ -203,39 +223,48 @@ async function processMessageWithTwoStepAI(ctx: any, userMessage: string) {
   const instantReply = await ctx.reply("🔍 Анализирую задачу...");
 
   try {
-    // Шаг 1: Получаем рекомендацию по материалам
-    const aiRecommendation = await getAIRecommendation(userMessage, SYSTEM_PROMPT);
+    // ШАГ 1: Получаем рекомендацию по материалам
+    const aiRecommendation = await getAIRecommendation(
+      userMessage,
+      SYSTEM_PROMPT
+    );
     mainLogger.info("Raw AI Recommendation: " + aiRecommendation);
 
     const recommendedMaterials = parseMaterialsFromAIResponse(aiRecommendation);
     mainLogger.info("Parsed Materials: " + recommendedMaterials.join(", "));
 
-    const materialsString = recommendedMaterials.join(", ");
-    const products = getProducts();
-    const foundProducts = searchProductsByAIMaterials(materialsString, products);
+    // ШАГ 2: Ищем продукты в базе
+    const foundProducts = findProductsByMaterials(recommendedMaterials);
     mainLogger.info("Products found: " + foundProducts.length);
+    foundProducts.forEach((product) => {
+      mainLogger.info(`Found product: ${product.title} - ${product.material}`);
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Уточнение продукта при необходимости
     if (foundProducts.length > 1) {
-      const clarificationSent = await handleProductClarification(ctx, userMessage, foundProducts);
+      const clarificationSent = await handleProductClarification(
+        ctx,
+        userMessage,
+        foundProducts
+      );
       mainLogger.info("Clarification sent: " + clarificationSent);
 
       if (clarificationSent) {
         context.candidateProducts = foundProducts;
         context.pendingMessage = userMessage;
-        context.aiRecommendation = materialsString;
+        context.aiRecommendation = recommendedMaterials.join(", ");
         chatCache.update(chatId, context);
         mainLogger.info("Context updated, waiting for user selection");
         return;
       }
     }
 
-    // Шаг 3: Получаем финальный ответ
+    // ШАГ 3: Получаем финальный ответ
     const finalAnswer = await getFinalAIResponse(
       userMessage,
-      materialsString,
+      recommendedMaterials,
       foundProducts,
       SYSTEM_PROMPT,
       context.history
@@ -243,31 +272,38 @@ async function processMessageWithTwoStepAI(ctx: any, userMessage: string) {
 
     mainLogger.info("Final Answer: " + finalAnswer);
 
-    // Создаем сообщение со ссылками
+    // ШАГ 4: Добавляем ссылки на продукты
     const productLinksMessage = createProductLinksMessage(foundProducts);
     const fullMessage = finalAnswer + productLinksMessage;
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Обновляем историю и отправляем ответ
-    chatCache.updateHistory(chatId, { role: "assistant", content: fullMessage });
+    chatCache.updateHistory(chatId, {
+      role: "assistant",
+      content: fullMessage,
+    });
     tokenTracker.updateChatId("analytical_request", chatId);
     tokenTracker.updateChatId("final_request", chatId);
 
-    await ctx.api.editMessageText(ctx.chat.id, instantReply.message_id, fullMessage);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-  } catch (error) {
-    mainLogger.error("Error in two-step AI process:", { error: (error as Error).message } as any);
     await ctx.api.editMessageText(
-      ctx.chat.id, 
-      instantReply.message_id, 
+      ctx.chat.id,
+      instantReply.message_id,
+      fullMessage
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } catch (error) {
+    mainLogger.error("Error in two-step AI process:", {
+      error: (error as Error).message,
+    } as any);
+    await ctx.api.editMessageText(
+      ctx.chat.id,
+      instantReply.message_id,
       "Извините, произошла ошибка при обработке запроса."
     );
   }
 }
 
-// Обработчики сообщений
 export function register_message() {
   mainLogger.info("Registering message handler with two-step AI...");
 
@@ -294,23 +330,32 @@ export function register_message() {
 
     try {
       const chatContext = chatCache.getOrCreate(chatId);
-      const { pendingMessage = "", candidateProducts = [], aiRecommendation = "" } = chatContext;
+      const {
+        pendingMessage = "",
+        candidateProducts = [],
+        aiRecommendation = "",
+      } = chatContext;
 
       await ctx.deleteMessage();
       completeProductClarification(chatId);
 
-      const selectedProducts = selectProductsFromCandidate(candidateProducts, productIndex);
+      const selectedProducts = selectProductsFromCandidate(
+        candidateProducts,
+        productIndex
+      );
 
       if (productIndex === "cancel") {
         await ctx.answerCallbackQuery({ text: "Уточнение отменено" });
       } else if (selectedProducts.length > 0) {
-        const productNames = selectedProducts.map((p) => p.title).join(", ");
+        const productNames = selectedProducts
+          .map((p: { title: any }) => p.title)
+          .join(", ");
         await ctx.answerCallbackQuery({ text: `Выбрано: ${productNames}` });
 
         const SYSTEM_PROMPT = getSystemPrompt();
         const finalAnswer = await getFinalAIResponse(
           pendingMessage,
-          aiRecommendation,
+          [aiRecommendation],
           selectedProducts,
           SYSTEM_PROMPT,
           chatContext.history
@@ -320,8 +365,16 @@ export function register_message() {
         const productLinksMessage = createProductLinksMessage(selectedProducts);
         const fullMessage = finalAnswer + productLinksMessage;
 
-        chatCache.updateHistory(chatId, { role: "assistant", content: fullMessage });
-        await ctx.reply(fullMessage);
+        chatCache.updateHistory(chatId, {
+          role: "assistant",
+          content: fullMessage,
+        });
+        try {
+          await ctx.editMessageText(fullMessage);
+        } catch (editError) {
+          // Fallback if message can't be edited (e.g., too old)
+          await ctx.reply(fullMessage);
+        }
       }
     } catch (error) {
       console.error("Callback error:", error);

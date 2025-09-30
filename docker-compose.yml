@@ -14,11 +14,10 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d plastic_bot"]
+      interval: 10s
       timeout: 5s
       retries: 10
-
   app:
     image: ghcr.io/matteygg/telegram-plastic:latest
     env_file: .env

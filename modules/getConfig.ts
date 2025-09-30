@@ -37,7 +37,7 @@ export async function loadConfig(force = false): Promise<void> {
     isConfigLoaded = true;
     mainLogger.info('✅ Конфигурация успешно загружена из БД');
   } catch (error) {
-    mainLogger.error('🚨 Ошибка загрузки конфигурации из БД:', error);
+    mainLogger.error('🚨 Ошибка загрузки конфигурации из БД:', error as any);
     throw new Error('Failed to load configs from database');
   }
 }

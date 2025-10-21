@@ -3,3 +3,4 @@
 
 # docker buildx build --platform linux/amd64 -t ghcr.io/matteygg/telegram-plastic:latest --load .
 # docker push ghcr.io/matteygg/telegram-plastic:latest
+

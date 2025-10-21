@@ -20,8 +20,8 @@ dotenv.config();
 // Конфигурация
 const token = process.env["YANDEX_TOKEN"];
 const endpoint = process.env["YANDEX_ENDPOINT"];
-const ANALYTICAL_MODEL = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
-const FINAL_ANSWER_MODEL = "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
+const ANALYTICAL_MODEL = process.env["ANALYTICAL_MODEL"] || "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
+const FINAL_ANSWER_MODEL = process.env["FINAL_ANSWER_MODEL"] || "gpt://b1gqrnacgsktinq6ags3/yandexgpt-lite";
 const MAX_HISTORY_LENGTH = 6;
 
 const client = new OpenAI({ apiKey: token, baseURL: endpoint });
@@ -123,7 +123,42 @@ async function getAIRecommendation(
 - Только названия материалов через запятую в квадратных скобках
 - Не больше 3 материалов
 - Без объяснений, без текста, только чистый список
-- Используй стандартные названия: ABS, PLA, PETG, TPU, ASA, NYLON и т.д.`,
+Всего продуктов: 53
+
+• ABS+CF15: 1
+• PEEK+CF: 1
+• TPU (A80): 1
+• PSU: 1
+• PEEK+GF: 1
+• PP: 1
+• PA6+CF30: 1
+• rPETG+GF: 1
+• PET-G: 2
+• TPU (A95): 1
+• rPETG: 1
+• TPU (A70): 1
+• N/A: 10
+• PMMA: 1
+• ABS+PC: 1
+• PLA: 3
+• PA12+GF12: 1
+• PC: 1
+• HIPS: 1
+• ABS+GF13: 8
+• PA12+CF: 1
+• PVA: 1
+• ABS: 1
+• PA12: 1
+• PP+Nano Tubes: 1
+• PA6: 1
+• ASA: 1
+• PP+GF: 1
+• PEI: 1
+• PETG+GF10: 1
+• TPU+GF: 1
+• SEBS: 1
+• PEEK: 1
+• PVFD: 1`,
     },
   ];
 
@@ -170,19 +205,36 @@ async function getFinalAIResponse(
   history: any[]
 ): Promise<string> {
   const productDescription = createProductDescription(foundProducts);
-  const strictInstructions = createStrictProductInstructions();
+  
+  // More explicit instructions
+  const enhancedInstructions = `
+${systemPrompt}
+
+ДОСТУПНЫЕ ПРОДУКТЫ ДЛЯ РЕКОМЕНДАЦИИ:
+${productDescription}
+
+КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:
+1. РЕКОМЕНДУЙТЕ ТОЛЬКО ТЕ ПРОДУКТЫ, КОТОРЫЕ ПЕРЕЧИСЛЕНЫ ВЫШЕ
+2. Не упоминайте продукты, которых нет в списке доступных
+3. Сосредоточьтесь на преимуществах КОНКРЕТНЫХ продуктов из списка
+4. Объясните, почему выбранные продукты подходят для задачи пользователя
+5. НЕ добавляйте ссылки - они будут добавлены автоматически
+
+СТРУКТУРА ОТВЕТА:
+- Краткий анализ требований пользователя
+- Обзор 1-2 наиболее подходящих продуктов из доступных
+- Конкретные рекомендации с обоснованием
+`;
 
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    {
-      role: "system",
-      content: `${systemPrompt}\n\n${productDescription}\n\n${strictInstructions}`,
+    { 
+      role: "system", 
+      content: enhancedInstructions
     },
     ...history.slice(-MAX_HISTORY_LENGTH),
-    {
-      role: "user",
-      content: `Рекомендованные материалы: ${recommendedMaterials.join(
-        ", "
-      )}. Задача: ${userMessage}`,
+    { 
+      role: "user", 
+      content: `Рекомендованные материалы: ${recommendedMaterials.join(", ")}. Задача: ${userMessage}` 
     },
   ];
 
@@ -242,24 +294,24 @@ async function processMessageWithTwoStepAI(ctx: any, userMessage: string) {
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Уточнение продукта при необходимости
-    if (foundProducts.length > 1) {
-      const clarificationSent = await handleProductClarification(
-        ctx,
-        userMessage,
-        foundProducts
-      );
-      mainLogger.info("Clarification sent: " + clarificationSent);
+    // Уточнение продукта при необходимости EDIT: Выключено, подразумевается, что пользователь не знает какой продукт нужен
+    // if (foundProducts.length > 1) {
+    //   const clarificationSent = await handleProductClarification(
+    //     ctx,
+    //     userMessage,
+    //     foundProducts
+    //   );
+    //   mainLogger.info("Clarification sent: " + clarificationSent);
 
-      if (clarificationSent) {
-        context.candidateProducts = foundProducts;
-        context.pendingMessage = userMessage;
-        context.aiRecommendation = recommendedMaterials.join(", ");
-        chatCache.update(chatId, context);
-        mainLogger.info("Context updated, waiting for user selection");
-        return;
-      }
-    }
+    //   if (clarificationSent) {
+    //     context.candidateProducts = foundProducts;
+    //     context.pendingMessage = userMessage;
+    //     context.aiRecommendation = recommendedMaterials.join(", ");
+    //     chatCache.update(chatId, context);
+    //     mainLogger.info("Context updated, waiting for user selection");
+    //     return;
+    //   }
+    // }
 
     // ШАГ 3: Получаем финальный ответ
     const finalAnswer = await getFinalAIResponse(

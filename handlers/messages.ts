@@ -66,9 +66,9 @@ function createProductDescription(products: Product[]): string {
     products
       .map((product, index) => {
         return `ПРОДУКТ ${index + 1}:
-🎯 Название: ${product.title}
-🧪 Материал: ${product.material}
-📝 Описание: ${product.description}`;
+Название: ${product.title}
+Материал: ${product.material}
+Описание: ${product.description}`;
       })
       .join("\n\n")
   );
